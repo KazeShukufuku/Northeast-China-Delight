@@ -96,7 +96,26 @@ public class VillageSeedsLootModifier extends LootModifier
         {
             generatedLoot.add(roll(random, TEMPERATE));
         }
+        if (random.nextFloat() < 0.15F)
+        {
+            generatedLoot.add(rollProcessed(random));
+        }
         return generatedLoot;
+    }
+
+    /** 权重 5/4/3。玉米面和水面团 1~3 个，花生酱固定 1 瓶。不替换种子那一抽。 */
+    private static ItemStack rollProcessed(net.minecraft.util.RandomSource random)
+    {
+        int roll = random.nextInt(12);
+        if (roll < 5)
+        {
+            return new ItemStack(ModItems.CORN_FLOUR.get(), 1 + random.nextInt(3));
+        }
+        if (roll < 9)
+        {
+            return new ItemStack(ModItems.WATER_DOUGH.get(), 1 + random.nextInt(3));
+        }
+        return new ItemStack(ModItems.PEANUT_BUTTER.get());
     }
 
     private static ItemStack roll(net.minecraft.util.RandomSource random, Entry[] table)
