@@ -76,6 +76,9 @@ public final class SideDishMerchantTrades
         trades.get(5).add(sell(9, ModItems.NIAN_DOU_BAO.get(), 1, 12, 30));
         trades.get(5).add(sell(6, ModItems.SOY_MILK.get(), 1, 12, 30));
         trades.get(5).add(sell(8, ModItems.KVASS.get(), 1, 12, 30));
+        trades.get(5).add(sell(2, ModItems.CORN_FLOUR.get(), 1, 12, 30));
+        trades.get(5).add(sell(5, ModItems.WATER_DOUGH.get(), 1, 12, 30));
+        trades.get(5).add(sellFull(ModItems.PEANUT_BUTTER.get(), 8, 12, 30));
         trades.get(5).add(buy(ModItems.PEANUT.get(), 22, 16, 30));
     }
 

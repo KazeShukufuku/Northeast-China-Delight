@@ -4,13 +4,18 @@
 
 ## 当前最新版本
 
-**2.9.1**
+**2.9.2**
 
 - Minecraft 1.20.1：Forge 47.1.33 及以上
 
 需要[农夫乐事](https://github.com/vectorwing/FarmersDelight)与[机械动力](https://github.com/Creators-of-Create/Create)作为前置。
 
 ## 更新记录
+
+**2.9.2**
+
+- 修复“批量风干”导致其他鼓风机配方不可用的问题
+- 优化战利品与副食商交易，使所有食材的获取不均依赖于机械动力模组
 
 **2.9.1**
 
