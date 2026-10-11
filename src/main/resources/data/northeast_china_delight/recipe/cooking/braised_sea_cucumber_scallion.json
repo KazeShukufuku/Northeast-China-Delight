@@ -11,6 +11,12 @@
     },
     {
       "tag": "c:foods/sea_cucumber"
+    },
+    {
+      "tag": "c:foods/sea_cucumber"
+    },
+    {
+      "tag": "c:foods/seasonings/soy_sauce"
     }
   ],
   "recipe_book_tab": "meals",

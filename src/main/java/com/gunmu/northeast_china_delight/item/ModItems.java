@@ -114,7 +114,13 @@ public class ModItems {
     public static final Supplier<Item> BAKED_SWEET_POTATO = food("baked_sweet_potato", 5, 0.6F);
     public static final Supplier<Item> SOUL_CABBAGE = food("spirit_cabbage", 4, 0.5F);
 
-    public static final Supplier<Item> LARGE_BASIN = simple("large_basin");
+    /**
+     * 大脸盆：空盆能放在地上（方块见 {@link ModBlocks#LARGE_BASIN}），也能扣头上（见 {@link LargeBasinItem}）。
+     * 物品图标仍旧是 2D 贴图 —— 2D/3D 的分流放在客户端渲染器里（{@code client/LargeBasinItemRenderer}）。
+     */
+    public static final Supplier<Item> LARGE_BASIN = regItem("large_basin",
+            properties -> new LargeBasinItem(ModBlocks.LARGE_BASIN.get(), properties),
+            new Item.Properties());
     public static final Supplier<Item> GRILL_RACK = simple("grill_rack");
     public static final Supplier<Item> BRASS_BOWL = simple("brass_bowl");
 
@@ -506,9 +512,10 @@ public class ModItems {
     /**
      * 大盆菜的方块物品：放下就是一大盆（见 {@code DdFeastBlock}），右键取一份得「碗装XX」。
      * 一盆就是一份菜，所以不能堆叠（最大堆叠 1）。
+     * 物品栏是 2D 贴图、手 / 地面是方块模型，分流在客户端渲染器（{@code client/DdFeastItemRenderer}）。
      */
     private static Supplier<Item> feastItem(String id, Supplier<? extends Block> block) {
-        return regItem(id, properties -> new BlockItem(block.get(), properties),
+        return regItem(id, properties -> new DdFeastItem(block.get(), properties),
                 new Item.Properties().stacksTo(1));
     }
 

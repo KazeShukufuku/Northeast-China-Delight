@@ -7,10 +7,10 @@
   "experience": 1.0,
   "ingredients": [
     {
-      "tag": "c:foods/raw_fish"
+      "item": "northeast_china_delight:hairtail"
     },
     {
-      "tag": "c:foods/raw_fish"
+      "item": "northeast_china_delight:hairtail"
     },
     {
       "tag": "c:foods/seasonings/soy_sauce"

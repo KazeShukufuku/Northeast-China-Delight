@@ -105,17 +105,6 @@ public class NortheastFishingLootModifier extends LootModifier
 
         boolean deepOcean = isColdDeepOcean(level, surface);
         boolean openWater = isOpenWater(level, surface);
-        int depth = waterDepth(level, surface);
-        String biomeName = level.getBiome(surface).unwrapKey().map(k -> k.location().toString()).orElse("unknown");
-        net.minecraft.world.entity.player.Player player = level.getNearestPlayer(
-                bobber.getX(), bobber.getY(), bobber.getZ(), 8.0D, false);
-        if (player != null)
-        {
-            player.displayClientMessage(
-                    net.minecraft.network.chat.Component.literal(String.format(
-                            "§7[东北乐事] §f开阔水面: %s §f(150格内水/冰/含水方块) §f水深: %d 群系: %s",
-                            openWater ? "§a是" : "§c否", depth, biomeName)), true);
-        }
 
         Entry[] table;
         if (deepOcean && openWater)
@@ -239,21 +228,6 @@ public class NortheastFishingLootModifier extends LootModifier
             return true;
         }
         return false;
-    }
-
-    public static int waterDepth(ServerLevel level, BlockPos surface)
-    {
-        int depth = 0;
-        BlockPos.MutableBlockPos cursor = surface.mutable();
-        for (int i = 0; i < 30; i++)
-        {
-            if (!isWater(level, cursor.move(Direction.DOWN)))
-            {
-                break;
-            }
-            depth++;
-        }
-        return depth;
     }
 
     private static boolean isWater(ServerLevel level, BlockPos pos)

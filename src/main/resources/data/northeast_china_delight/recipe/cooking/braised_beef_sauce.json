@@ -3,7 +3,7 @@
   "experience": 1.0,
   "ingredients": [
     {
-      "tag": "c:foods/raw_beef"
+      "item": "minecraft:beef"
     },
     {
       "tag": "c:foods/seasonings/soy_sauce"

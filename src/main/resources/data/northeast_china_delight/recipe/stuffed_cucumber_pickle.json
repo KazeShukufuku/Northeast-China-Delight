@@ -3,7 +3,7 @@
   "category": "misc",
   "ingredients": [
     {
-      "tag": "c:foods/pickles"
+      "item": "northeast_china_delight:pickled_cucumber"
     },
     {
       "tag": "c:foods/kimchi"

@@ -4,6 +4,12 @@ import com.gunmu.northeast_china_delight.crafting.VatRecipes;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+//? if <1.21 {
+/*import net.minecraft.world.item.enchantment.Enchantment;
+*///?} else {
+import net.minecraft.core.Holder;
+import net.minecraft.world.item.enchantment.Enchantment;
+//?}
 
 /**
  * 瓶装调料：一瓶 = {@link #CAPACITY_MB} mB 液体，用一次扣 {@link #DOSE_MB} mB。剩余量直接用原版耐久（{@code DAMAGE}
@@ -19,6 +25,34 @@ public class SeasoningBottleItem extends Item {
     public SeasoningBottleItem(Properties properties) {
         super(properties);
     }
+
+    /** 耐久只用来记剩余毫升，不是工具，不能附魔。 */
+    @Override
+    public boolean isEnchantable(ItemStack stack) {
+        return false;
+    }
+
+    @Override
+    public boolean isBookEnchantable(ItemStack stack, ItemStack book) {
+        return false;
+    }
+
+    //? if <1.21 {
+    /*@Override
+    public boolean canApplyAtEnchantingTable(ItemStack stack, Enchantment enchantment) {
+        return false;
+    }
+    *///?} else {
+    @Override
+    public boolean isPrimaryItemFor(ItemStack stack, Holder<Enchantment> enchantment) {
+        return false;
+    }
+
+    @Override
+    public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
+        return false;
+    }
+    //?}
 
     @Override
     public ItemStack getCraftingRemainingItem(ItemStack stack) {

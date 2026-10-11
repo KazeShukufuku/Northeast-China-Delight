@@ -11,6 +11,9 @@
     },
     {
       "tag": "c:foods/vermicelli"
+    },
+    {
+      "tag": "c:foods/seasonings/animal_oil"
     }
   ],
   "recipe_book_tab": "meals",

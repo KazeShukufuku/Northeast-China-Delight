@@ -29,17 +29,9 @@ public final class GrillRecipes {
             return Math.max(1, this.seconds * 20);
         }
 
-        private int seasoningIndex(ItemStack stack) {
-            for (int i = 0; i < this.seasonings.size(); i++) {
-                if (this.seasonings.get(i).test(stack)) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        public boolean seasoningsReady(List<Item> applied) {
-            java.util.List<Ingredient> needed = new ArrayList<>(this.seasonings);
+        /** 还没盖上的调料。每一份已加调料只抵消配方里第一个对得上的条目。 */
+        private List<Ingredient> remainingSeasonings(List<Item> applied) {
+            List<Ingredient> needed = new ArrayList<>(this.seasonings);
             for (Item item : applied) {
                 ItemStack probe = new ItemStack(item);
                 for (int i = 0; i < needed.size(); i++) {
@@ -49,27 +41,21 @@ public final class GrillRecipes {
                     }
                 }
             }
-            return needed.isEmpty();
+            return needed;
+        }
+
+        public boolean seasoningsReady(List<Item> applied) {
+            return this.remainingSeasonings(applied).isEmpty();
         }
 
         /** 还需要这份调料吗（用来判断玩家手里的东西能不能放上去） */
         public boolean needsSeasoning(List<Item> applied, ItemStack stack) {
-            if (seasoningIndex(stack) < 0) {
-                return false;
-            }
-            int required = 0;
-            for (Ingredient seasoning : this.seasonings) {
+            for (Ingredient seasoning : this.remainingSeasonings(applied)) {
                 if (seasoning.test(stack)) {
-                    required++;
+                    return true;
                 }
             }
-            int already = 0;
-            for (Item item : applied) {
-                if (seasoningIndex(new ItemStack(item)) >= 0) {
-                    already++;
-                }
-            }
-            return already < required;
+            return false;
         }
     }
 
