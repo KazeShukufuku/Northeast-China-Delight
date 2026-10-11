@@ -101,8 +101,8 @@ public final class DishFlavors {
         put(map, Flavor.GREASY, 2, "braised_pork_bone_sauce");
         put(map, Flavor.GREASY, 3, "braised_beef_sauce");
         put(map, Flavor.GREASY, 6, "smoked_meat_platter");
-        put(map, Flavor.GREASY, 4, "braised_pork_ribs");
-        put(map, Flavor.GREASY, 3, "candied_sweet_potato");
+        put(map, Flavor.GREASY, 5, "braised_pork_ribs");
+        put(map, Flavor.GREASY, 5, "candied_sweet_potato");
         put(map, Flavor.GREASY, 4, "dry_fried_hairtail");
         put(map, Flavor.GREASY, 4, "braised_hairtail");
         put(map, Flavor.GREASY, 5, "hazelnut_sugar_fire_bun");
@@ -125,7 +125,7 @@ public final class DishFlavors {
         put(map, Flavor.REFRESHING, 4, "crushed_corn_porridge");
         put(map, Flavor.REFRESHING, 2, "sour_noodle_soup");
         put(map, Flavor.REFRESHING, 3, "pepper_dried_tofu");
-        put(map, Flavor.REFRESHING, 2, "sauerkraut_fried_vermicelli");
+        put(map, Flavor.REFRESHING, 3, "sauerkraut_fried_vermicelli");
         put(map, Flavor.REFRESHING, 6, "buckwheat_cold_noodles");
         put(map, Flavor.REFRESHING, 5, "pickled_veggie_salad");
         put(map, Flavor.REFRESHING, 7, "shredded_pollack");
@@ -133,7 +133,7 @@ public final class DishFlavors {
         put(map, Flavor.REFRESHING, 4, "stuffed_cucumber_pickle");
         put(map, Flavor.REFRESHING, 8, "mixed_vegetable_salad");
         put(map, Flavor.REFRESHING, 3, "cabbage_tofu_vermicelli_stew");
-        put(map, Flavor.REFRESHING, 2, "pickled_cucumber_pork_stirfry");
+        put(map, Flavor.REFRESHING, 3, "pickled_cucumber_pork_stirfry");
         put(map, Flavor.REFRESHING, 5, "tiger_salad");
         put(map, Flavor.REFRESHING, 1, 200, "kvass");
 
@@ -145,7 +145,7 @@ public final class DishFlavors {
 
         put(map, Flavor.BALANCED, 3, "steamed_egg_soy_paste");
         put(map, Flavor.BALANCED, 4, "northeast_rice_wrap");
-        put(map, Flavor.BALANCED, 3, "sauerkraut_bone_stew_bowl");
+        put(map, Flavor.BALANCED, 4, "sauerkraut_bone_stew_bowl");
         put(map, Flavor.BALANCED, 4, "pork_vermicelli_stew_bowl");
         put(map, Flavor.BALANCED, 6, "harvest_stew_bowl");
         put(map, Flavor.BALANCED, 5, "spicy_beef_soup");
@@ -156,9 +156,9 @@ public final class DishFlavors {
         put(map, Flavor.BALANCED, 4, "seafood_tofu_soup");
         put(map, Flavor.BALANCED, 5, "three_delicacy_dumpling");
         put(map, Flavor.BALANCED, 3, "sauerkraut_crackling_dumpling");
-        put(map, Flavor.BALANCED, 2, "cured_pork_bean_stew");
+        put(map, Flavor.BALANCED, 3, "cured_pork_bean_stew");
         put(map, Flavor.BALANCED, 5, "mung_bean_sheet_salad");
-        put(map, Flavor.BALANCED, 2, "braised_sea_cucumber_scallion");
+        put(map, Flavor.BALANCED, 4, "braised_sea_cucumber_scallion");
         put(map, Flavor.BALANCED, 2, "sea_cucumber_tofu_soup");
         put(map, Flavor.BALANCED, 6, "demoli_fish_stew");
         put(map, Flavor.BALANCED, 6, "borscht");

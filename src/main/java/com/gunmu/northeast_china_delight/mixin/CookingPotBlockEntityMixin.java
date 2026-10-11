@@ -26,6 +26,9 @@ import vectorwing.farmersdelight.common.crafting.CookingPotRecipe;
 /**
  * 让瓶装调料留在厨锅里继续用。农夫乐事厨锅的 {@code processCooking} 写死了两件事：把食材的合成剩余物弹到锅外、然后把食材数量减 1。对瓶装调料来说这两件事
  * 都不对 —— 我们想要的是「留在锅里，每次扣 50 mB」。
+ * <p>
+ * 出菜发生在 {@code shrink} 之前。容量不够时如果等到扣瓶子再拒绝，菜已经进了成品槽。所以不足一剂时在方法开头就停住，进度不涨、瓶子留在锅里。
+ * 油炸用油仍是整瓶消耗，不按 50 mB 卡。
  */
 @Mixin(CookingPotBlockEntity.class)
 public abstract class CookingPotBlockEntityMixin {
@@ -33,7 +36,7 @@ public abstract class CookingPotBlockEntityMixin {
     @Unique
     private ItemStack northeast$cookingResult = ItemStack.EMPTY;
 
-    @Inject(method = "processCooking", at = @At("HEAD"), remap = false)
+    @Inject(method = "processCooking", at = @At("HEAD"), cancellable = true, remap = false)
     private void northeast$rememberCookingResult(
             //? if <1.20.2 {
             CookingPotRecipe recipe,
@@ -52,6 +55,28 @@ public abstract class CookingPotBlockEntityMixin {
         //?} else {
         /*this.northeast$cookingResult = recipe.value().getResultItem(level.registryAccess()).copy();
         *///?}
+        if (northeast$seasoningTooLow(pot, this.northeast$cookingResult)) {
+            cir.setReturnValue(false);
+        }
+    }
+
+
+    @Unique
+    private static boolean northeast$seasoningTooLow(CookingPotBlockEntity pot, ItemStack result) {
+        ItemStackHandler inventory = pot.getInventory();
+        for (int slot = 0; slot < CookingPotBlockEntity.MEAL_DISPLAY_SLOT; slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (!SeasoningBottleItem.isBottle(stack)) {
+                continue;
+            }
+            if (stack.is(ModItems.DEEP_FRY_OILS) && result.is(ModItems.DEEP_FRIED_DISHES)) {
+                continue;
+            }
+            if (SeasoningBottleItem.remainingMb(stack) < SeasoningBottleItem.DOSE_MB) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @WrapOperation(

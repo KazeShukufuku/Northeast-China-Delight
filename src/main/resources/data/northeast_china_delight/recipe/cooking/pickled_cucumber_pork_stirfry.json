@@ -11,6 +11,9 @@
     },
     {
       "tag": "c:foods/raw_pork"
+    },
+    {
+      "tag": "c:foods/seasonings/cooking_oil"
     }
   ],
   "recipe_book_tab": "meals",

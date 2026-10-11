@@ -296,6 +296,19 @@ public class ModBlocks {
                         .pushReaction(PushReaction.DESTROY));
     }
 
+    /**
+     * 空的大脸盆：能放在地上的盆体（模型 block/large_basin 由 临时素材/1.json 转写，盆沿 5.5 像素）。
+     * 不影响物品图标 —— 物品模型仍旧走 models/item/large_basin.json 里的 2D 贴图。
+     */
+    public static final Supplier<Block> LARGE_BASIN =
+            block("large_basin",
+                    properties -> new DishBlock(properties, DishBlock.BASIN_SHAPE),
+                    BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.WOOD)
+                            .strength(0.5F)
+                            .sound(SoundType.WOOD)
+                            .noOcclusion());
+
     public static final Supplier<Block> DA_FENG_SHOU_POT =
             feastBlock("harvest_stew", () -> ModItems.DA_FENG_SHOU_BOWL.get());
     public static final Supplier<Block> DI_GUO_JI_POT =

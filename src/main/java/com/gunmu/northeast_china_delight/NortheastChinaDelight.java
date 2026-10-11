@@ -112,12 +112,20 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
 /*import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 *///?}
 //? if <1.20.2 {
+import net.minecraftforge.client.event.ModelEvent;
+//?} else {
+/*import net.neoforged.neoforge.client.event.ModelEvent;
+*///?}
+//? if <1.20.2 {
 import net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions;
 //?} else {
 /*import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 *///?}
 //? if >=1.20.5 {
-/*import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+/*import com.gunmu.northeast_china_delight.client.DdFeastItemRenderer;
+import com.gunmu.northeast_china_delight.client.LargeBasinItemRenderer;
+import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 *///?}
 //? if <1.20.2 {
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -355,6 +363,34 @@ public class NortheastChinaDelight
         }
 
         /**
+         * 大脸盆与 8 道大盆菜的物品栏图标是单独一份 2D 模型（models/item/*_icon.json）。
+         * 它们不挂在任何方块/物品的默认模型路径上，得先在这里登记才会被烘焙，
+         * 渲染时再由 LargeBasinItemRenderer / DdFeastItemRenderer 从 ModelManager 取回。
+         */
+        @SubscribeEvent
+        public static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event)
+        {
+            registerItemIcon(event, "large_basin_icon");
+            registerItemIcon(event, "sauerkraut_bone_stew_icon");
+            registerItemIcon(event, "ground_pot_chicken_icon");
+            registerItemIcon(event, "ground_pot_ribs_icon");
+            registerItemIcon(event, "slaughter_feast_icon");
+            registerItemIcon(event, "pork_vermicelli_stew_icon");
+            registerItemIcon(event, "harvest_stew_icon");
+            registerItemIcon(event, "sauerkraut_seafood_stew_icon");
+            registerItemIcon(event, "chicken_mushroom_stew_icon");
+        }
+
+        private static void registerItemIcon(ModelEvent.RegisterAdditional event, String iconPath)
+        {
+            //? if <1.20.2 {
+            event.register(DdIds.of(MODID, "item/" + iconPath));
+            //?} else {
+            /*event.register(ModelResourceLocation.standalone(DdIds.of(MODID, "item/" + iconPath)));
+            *///?}
+        }
+
+        /**
          * 酱油、大酱在流体储罐 / 管道里的贴图。
          * 没有这一段的话，机械动力的储罐会显示成紫黑格。
          *
@@ -365,6 +401,20 @@ public class NortheastChinaDelight
         /*@SubscribeEvent
         public static void onRegisterClientExtensions(RegisterClientExtensionsEvent event)
         {
+            // 大脸盆：物品栏画贴图、手/地面/头上画方块，分流在 LargeBasinItemRenderer 里
+            event.registerItem(LargeBasinItemRenderer.CLIENT_EXTENSION, ModItems.LARGE_BASIN.get());
+
+            // 8 道大盆菜：物品栏画贴图、手/地面画方块，分流在 DdFeastItemRenderer 里
+            event.registerItem(DdFeastItemRenderer.CLIENT_EXTENSION,
+                    ModItems.SUAN_CAI_DUN_GU_TOU.get(),
+                    ModItems.DI_GUO_JI.get(),
+                    ModItems.DI_GUO_PAI_GU.get(),
+                    ModItems.SHA_ZHU_CAI.get(),
+                    ModItems.ZHU_ROU_DUN_FEN_TIAO.get(),
+                    ModItems.DA_FENG_SHOU.get(),
+                    ModItems.SUAN_CAI_HAI_XIAN_GUO.get(),
+                    ModItems.XIAO_JI_DUN_MO_GU.get());
+
             event.registerFluidType(new IClientFluidTypeExtensions()
             {
                 @Override

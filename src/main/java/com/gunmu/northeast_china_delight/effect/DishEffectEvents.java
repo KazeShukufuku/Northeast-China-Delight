@@ -54,6 +54,13 @@ public class DishEffectEvents {
     private static final Map<UUID, Float> LAST_EXHAUSTION = new HashMap<>();
     private static final Map<UUID, Float> REGEN_CREDIT = new HashMap<>();
 
+    /** 额外送「养生」10 秒的菜：参鸡汤、葱烧海参、海参豆腐汤。吃和提示框共用这一份判断，别再各写一半。 */
+    private static boolean givesNourishing(ItemStack stack) {
+        return stack.is(ModItems.SHEN_JI_TANG.get())
+                || stack.is(ModItems.CONG_SHAO_HAI_SHEN.get())
+                || stack.is(ModItems.HAI_SHEN_DOU_FU_TANG.get());
+    }
+
     @SubscribeEvent
     public static void onFinishUsingItem(LivingEntityUseItemEvent.Finish event) {
         if (!(event.getEntity() instanceof Player player) || player.level().isClientSide()) {
@@ -80,7 +87,7 @@ public class DishEffectEvents {
                 player.addEffect(applied.instance());
             }
         }
-        if (stack.is(ModItems.SHEN_JI_TANG.get()) || stack.is(ModItems.CONG_SHAO_HAI_SHEN.get())) {
+        if (givesNourishing(stack)) {
             for (DishEffects.Applied applied : DishEffects.nourishingExtras()) {
                 player.addEffect(applied.instance());
             }
@@ -119,7 +126,7 @@ public class DishEffectEvents {
         if (warmth > 0) {
             effects.addAll(DishEffects.warmth(warmth));
         }
-        if (stack.is(ModItems.SHEN_JI_TANG.get()) || stack.is(ModItems.CONG_SHAO_HAI_SHEN.get())) {
+        if (givesNourishing(stack)) {
             effects.addAll(DishEffects.nourishingExtras());
         }
         if (stack.is(ModItems.ORANGE_GUO_BAO_ROU.get())) {
