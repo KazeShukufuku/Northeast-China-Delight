@@ -4,14 +4,18 @@ import com.gunmu.northeast_china_delight.NortheastChinaDelight;
 import com.gunmu.northeast_china_delight.item.ModItems;
 //? if <1.20.2 || >=1.20.5 {
 import com.simibubi.create.api.registry.CreateRegistries;
+import com.simibubi.create.content.kinetics.fan.EncasedFanBlock;
 import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;
 //?}
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 //? if <1.20.2 {
 /*import net.minecraftforge.eventbus.api.IEventBus;
@@ -44,9 +48,26 @@ public class ModFanProcessingTypes {
     }
 
     private static class DryingType implements FanProcessingType {
+        /**
+         * 只在气流最前端的空气格成立，也就是鼓风机正前方那一格、而且没有被方块挡住。
+         *
+         * Create 重建气流时靠这个判断某一段气流算哪种处理，返回 true 的位置会成为整段的类型。
+         * 所以这里不能对所有位置都返回 true：那样每一段气流都会被判成干燥，
+         * 烟熏/鼓风/喷溅/缠魂全都选不中，整合包里鼓风机什么都加工不了。
+         * 只认鼓风机正前方、又没有方块的位置，往后的空气格在 Create 眼里仍然没有类型，
+         * 会沿用前面找到的催化剂，原版的四种处理不受影响。
+         */
         @Override
-        public boolean isValidAt(Level level, net.minecraft.core.BlockPos pos) {
-            return true;
+        public boolean isValidAt(Level level, BlockPos pos) {
+            if (!level.getBlockState(pos).isAir()) return false;
+            for (Direction direction : Direction.values()) {
+                BlockState fanState = level.getBlockState(pos.relative(direction));
+                if (fanState.getBlock() instanceof EncasedFanBlock
+                        && fanState.getValue(EncasedFanBlock.FACING) == direction.getOpposite()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Override
