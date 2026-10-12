@@ -56,23 +56,11 @@ public final class VatJeiRecipes {
         for (VatRecipe.Slot slot : slots) {
             candidates.add(candidatesOf(slot));
         }
-        int driver = -1;
-        for (int i = 0; i < slots.size(); i++) {
-            if (candidates.get(i).size() > 1) {
-                driver = i;
-                break;
-            }
+        List<VatJeiRecipe.State> states = new ArrayList<>();
+        for (int level : levelsOf(recipe)) {
+            states.add(stateOf(recipe, candidates, level));
         }
-        int pages = driver < 0 ? 1 : candidates.get(driver).size();
-        List<VatJeiRecipe> out = new ArrayList<>(pages);
-        for (int page = 0; page < pages; page++) {
-            List<VatJeiRecipe.State> states = new ArrayList<>();
-            for (int level : levelsOf(recipe)) {
-                states.add(stateOf(recipe, candidates, driver, page, level));
-            }
-            out.add(new VatJeiRecipe(List.copyOf(states)));
-        }
-        return out;
+        return List.of(new VatJeiRecipe(List.copyOf(states)));
     }
 
     private static int[] levelsOf(VatRecipe recipe) {
@@ -89,11 +77,11 @@ public final class VatJeiRecipes {
     }
 
     private static VatJeiRecipe.State stateOf(VatRecipe recipe, List<List<ItemStack>> candidates,
-                                             int driver, int page, int level) {
+                                             int level) {
         int[] counts = resolveCounts(recipe, candidates, level);
         List<List<ItemStack>> seasoning = new ArrayList<>();
         List<List<ItemStack>> primary = new ArrayList<>();
-        List<ItemStack> results = new ArrayList<>();
+        List<ItemStack> products = new ArrayList<>();
 
         for (int i = 0; i < recipe.slots().size(); i++) {
             VatRecipe.Slot slot = recipe.slots().get(i);
@@ -101,27 +89,16 @@ public final class VatJeiRecipes {
             if (items.isEmpty()) {
                 continue;
             }
-            List<ItemStack> shown;
-            ItemStack sample;
-            if (i == driver) {
-                sample = items.get(page % items.size());
-                shown = List.of(withCount(sample, counts[i]));
-            } else {
-                sample = items.get(0);
-                shown = new ArrayList<>(items.size());
-                for (ItemStack item : items) {
-                    shown.add(withCount(item, counts[i]));
-                }
+            List<ItemStack> shown = new ArrayList<>(items.size());
+            for (ItemStack item : items) {
+                shown.add(withCount(item, counts[i]));
             }
             if (slot.layer() == VatRecipe.Layer.SEASONING) {
                 seasoning.add(List.copyOf(shown));
             } else {
                 primary.add(List.copyOf(shown));
             }
-            ItemStack produced = productOf(slot, sample, counts[i]);
-            if (!produced.isEmpty()) {
-                results.add(produced);
-            }
+            products.addAll(productsOf(slot, items, counts[i]));
         }
 
         VatRecipe.Liquid liquid = recipe.liquid();
@@ -131,18 +108,18 @@ public final class VatJeiRecipes {
         long baseMb = baseKind == VatRecipe.Fluid.WATER ? level * ONE_LAYER : liquid.sourWaterMb();
         Fluid product = fluidOf(liquid.product());
         long productMb = product == null ? 0 : recipe.productMbFor(level);
-        ItemStack result = merge(results);
-        if (product == null) {
+        List<ItemStack> results = mergeAll(products);
+        if (product == null && results.isEmpty()) {
             ItemStack bottled = bottledProduct(liquid, level);
             if (!bottled.isEmpty()) {
-                result = result.isEmpty() ? bottled : result;
+                results = List.of(bottled);
             }
         }
 
         return new VatJeiRecipe.State(
                 base, baseMb, Math.max(baseMb, (long) liquid.waterMax() * ONE_LAYER),
                 List.copyOf(seasoning), List.copyOf(primary), sealOf(recipe),
-                result, product, productMb,
+                results, product, productMb,
                 Math.max(productMb, VatRecipes.PRODUCT_CAPACITY_MB),
                 recipe.secondsFor(level), noteOf(recipe));
     }
@@ -217,19 +194,43 @@ public final class VatJeiRecipes {
         };
     }
 
-    private static ItemStack merge(List<ItemStack> results) {
-        if (results.isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-        ItemStack first = results.get(0);
-        int count = 0;
-        for (ItemStack stack : results) {
-            if (!stack.is(first.getItem())) {
-                return first;
+    /**
+     * 一格里的每个候选各自会变出什么产物（放白菜得酸菜、放黄瓜得腌黄瓜）；同一件产物在这一格里只留一份（咸腊肉那种多个候选映射到同一件也只留一份）。
+     */
+    private static List<ItemStack> productsOf(VatRecipe.Slot slot, List<ItemStack> items, int count) {
+        List<ItemStack> products = new ArrayList<>();
+        for (ItemStack item : items) {
+            ItemStack produced = productOf(slot, item, count);
+            if (produced.isEmpty() || indexOfItem(products, produced) >= 0) {
+                continue;
             }
-            count += stack.getCount();
+            products.add(produced);
         }
-        return first.copyWithCount(count);
+        return products;
+    }
+
+    /** 多格产物合到一起：同一件物品把份数加起来，不同物品各占一格（JEI 里滚动展示） */
+    private static List<ItemStack> mergeAll(List<ItemStack> products) {
+        List<ItemStack> merged = new ArrayList<>();
+        for (ItemStack stack : products) {
+            int index = indexOfItem(merged, stack);
+            if (index < 0) {
+                merged.add(stack.copy());
+            } else {
+                ItemStack have = merged.get(index);
+                merged.set(index, have.copyWithCount(have.getCount() + stack.getCount()));
+            }
+        }
+        return List.copyOf(merged);
+    }
+
+    private static int indexOfItem(List<ItemStack> stacks, ItemStack stack) {
+        for (int i = 0; i < stacks.size(); i++) {
+            if (stacks.get(i).is(stack.getItem())) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static ItemStack withCount(ItemStack stack, int count) {
@@ -289,15 +290,6 @@ public final class VatJeiRecipes {
         if (recipe.requiresSnowyBiome()) {
             return net.minecraft.network.chat.Component.translatable("jei.northeast_china_delight.vat.snowy_biome");
         }
-        boolean varies = false;
-        for (VatRecipe.BiomeBand band : VatRecipe.BiomeBand.values()) {
-            if (recipe.biomeMultiplier(band) != null) {
-                varies = true;
-                break;
-            }
-        }
-        return varies
-                ? net.minecraft.network.chat.Component.translatable("jei.northeast_china_delight.vat.biome_time")
-                : null;
+        return null;
     }
 }

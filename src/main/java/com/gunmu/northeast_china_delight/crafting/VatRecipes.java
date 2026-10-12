@@ -61,7 +61,8 @@ public final class VatRecipes {
     public static final int WHITE_VINEGAR_SERVINGS = 10;
     public static final int WATER_MB_PER_LEVEL = 1000;
     public static final int SERVING_MB = 250;
-    public static final int SOUR_WATER_MB = 3 * SERVING_MB;
+    /** 白醋要喝的酸引水 = 一整缸（3 层 = 3000 mB） */
+    public static final int SOUR_WATER_MB = 3 * WATER_MB_PER_LEVEL;
     public static final int FISH_SAUCE_FISH = 3;
     public static final int FISH_SAUCE_SALT = 6;
     public static final int FISH_SAUCE_SERVINGS = 1;
@@ -340,7 +341,8 @@ public final class VatRecipes {
 
         list.add(VatRecipe.of(Kind.VINEGAR, "vinegar")
                 .priority(20).seal(cloth)
-                .water(1, 3, VatRecipe.LiquidAfter.CLEAR)
+                // 一缸水（3 层）出 10 瓶：水位不再分 1~3 档，JEI 也就只有一档
+                .water(3, 3, VatRecipe.LiquidAfter.CLEAR)
                 .product(VatRecipe.Fluid.VINEGAR, PRODUCT_CAPACITY_MB, false)
                 .seconds(VINEGAR_SECONDS).biomeSeconds(BREW)
                 .slot(VatRecipe.Slot.consume(of(residue()), VatRecipe.BoundsRule.exact(RESIDUE_COUNT)))

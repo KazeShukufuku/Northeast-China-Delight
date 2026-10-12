@@ -436,9 +436,14 @@ public final class VatRecipe {
     }
 
     public boolean materialsReady(Counts counts, int sourWaterMb) {
-        if (!this.liquidFits(counts.water(), sourWaterMb)) {
-            return false;
-        }
+        return this.liquidFits(counts.water(), sourWaterMb) && this.ingredientsReady(counts);
+    }
+
+    /**
+     * 每一格的份数都满足，只管料不管水 —— 「材料都齐、只差封口（甚至还没倒水）」那一步靠它认配方，
+     * 所以封口物可以先盖、水可以后倒。
+     */
+    public boolean ingredientsReady(Counts counts) {
         for (int i = 0; i < this.slots.size(); i++) {
             if (!this.boundsOf(i, counts).satisfied(counts.count(this.slots.get(i).matcher()))) {
                 return false;

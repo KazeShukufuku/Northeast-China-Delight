@@ -16,7 +16,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
@@ -92,15 +91,11 @@ public class Vat extends Block implements EntityBlock {
         return level.getBlockEntity(pos) instanceof VatBlockEntity vat ? vat : null;
     }
 
-    /** 手里拿的是不是可以压缸的石头类方块（必须是完整方块：台阶/墙/栅栏这种不算） */
-    private static boolean isPressStone(ItemStack stack) {
+    /** 手里拿的是不是可以压缸的石头类方块（必须是完整方块：台阶/墙/栅栏这种不算）。封口判定在 VatBrewing，这里是 public */
+    public static boolean isPressStone(ItemStack stack) {
         return stack.getItem() instanceof BlockItem blockItem
                 && blockItem.getBlock().defaultBlockState().is(PRESS_STONES)
                 && blockItem.getBlock().defaultBlockState().isSolid();
-    }
-    private static boolean matchesRequiredSealItem(VatRecipe recipe, ItemStack stack) {
-        var matcher = recipe.requiredSealItem();
-        return matcher != null && matcher.test(stack);
     }
 
     public static boolean isClothRug(ItemStack stack) {
@@ -383,16 +378,12 @@ public class Vat extends Block implements EntityBlock {
         if (vat.isEmpty()) {
             return false;
         }
-        VatRecipe recipe = VatBrewing.current(vat);
+        VatRecipe recipe = VatBrewing.sealRecipe(vat, stack);
         if (recipe == null) {
             return false;
         }
-        boolean press = recipe.seal() == VatRecipe.Seal.PRESS && !vat.isPressed()
-                && (isPressStone(stack) || matchesRequiredSealItem(recipe, stack));
-        boolean carpet = recipe.seal() == VatRecipe.Seal.CARPET && stack.is(ItemTags.WOOL_CARPETS)
-                && !vat.isCovered();
-        boolean cloth = recipe.seal() == VatRecipe.Seal.CLOTH && isClothRug(stack) && !vat.isCovered();
-        if (!press && !carpet && !cloth) {
+        boolean press = recipe.seal() == VatRecipe.Seal.PRESS;
+        if (press ? vat.isPressed() : vat.isCovered()) {
             return false;
         }
         if (press) {

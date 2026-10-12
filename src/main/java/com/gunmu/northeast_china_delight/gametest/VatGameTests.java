@@ -85,12 +85,12 @@ public final class VatGameTests {
     public static void vatJeiPagesAreGenerated(GameTestHelper helper) {
         for (VatRecipe recipe : VatRecipes.all()) {
             List<VatJeiRecipe> pages = VatJeiRecipes.pagesFor(recipe);
-            if (pages.isEmpty()) {
-                helper.fail("配方 " + recipe.id() + " 在 JEI 里一页都没有");
+            if (pages.size() != 1) {
+                helper.fail("配方 " + recipe.id() + " 在 JEI 里应该正好一页，实际 " + pages.size() + " 页");
             }
             for (VatJeiRecipe page : pages) {
                 for (VatJeiRecipe.State state : page.states()) {
-                    if (state.result().isEmpty() && !state.hasResultFluid()) {
+                    if (state.results().isEmpty() && !state.hasResultFluid()) {
                         helper.fail("配方 " + recipe.id() + " 有一页什么都不产（投料画了、产物没画）");
                     }
                 }
@@ -140,17 +140,22 @@ public final class VatGameTests {
             vat.addContent(new ItemStack(ModItems.SALT.get()));
         }
         vat.setKind(VatRecipes.Kind.PASTE);
+        vat.setCover(new ItemStack(Items.WHITE_CARPET));
         VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.PASTE));
         if (vat.residueCount() != VatRecipes.RESIDUE_COUNT) {
             helper.fail("大酱酿完缸里应该有 " + VatRecipes.RESIDUE_COUNT + " 份酱渣，实际 " + vat.residueCount());
         }
         vat.setProductMb(VatRecipe.Fluid.PASTE, 0);
+        vat.takeCover();
 
         if (VatBrewing.forInsert(vat, new ItemStack(ModItems.CORN_SEEDS.get())) == null) {
             helper.fail("酿完大酱的缸加不进谷物：二次发酵被 forInsert 挡掉了");
         }
 
-        click(helper, player, new ItemStack(Items.WATER_BUCKET));
+        // 醋要一缸水：3 层，一桶一层
+        for (int i = 0; i < 3; i++) {
+            click(helper, player, new ItemStack(Items.WATER_BUCKET));
+        }
         for (int i = 0; i < VatRecipes.VINEGAR_GRAIN_COUNT; i++) {
             click(helper, player, new ItemStack(ModItems.CORN_SEEDS.get()));
         }
@@ -161,8 +166,66 @@ public final class VatGameTests {
         }
         click(helper, player, new ItemStack(cloth));
 
-        if (VatBrewing.ready(vat) == null) {
+        if (!vat.isCovered() || !vat.cover().is(cloth)) {
+            helper.fail("酱渣缸没有接收粗布毯");
+        }
+        VatRecipe vinegarRecipe = VatBrewing.ready(vat);
+        if (vinegarRecipe == null || vinegarRecipe.kind() != VatRecipes.Kind.VINEGAR
+                || vat.kind() != VatRecipes.Kind.VINEGAR) {
             helper.fail("酱渣 + 谷物 + 水 + 粗布毯没有开工（配方也没认出来）");
+        }
+        assertScheduled(helper, level, pos);
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void soySauceResidueRequiresGrainBeforeCloth(GameTestHelper helper) {
+        Player player = mockPlayer(helper, GameType.CREATIVE);
+        VatBlockEntity vat = placeVat(helper);
+        ServerLevel level = helper.getLevel();
+        BlockPos pos = helper.absolutePos(AT);
+
+        vat.addWater(3 * VatRecipes.WATER_MB_PER_LEVEL);
+        for (int i = 0; i < VatRecipes.PASTE_CHUNKS; i++) {
+            vat.addContent(new ItemStack(ModItems.SOY_PASTE_CHUNK.get()));
+        }
+        for (int i = 0; i < VatRecipes.PASTE_SALT; i++) {
+            vat.addContent(new ItemStack(ModItems.SALT.get()));
+        }
+        vat.addContent(new ItemStack(Items.WHEAT));
+        vat.setKind(VatRecipes.Kind.SOY_SAUCE);
+        vat.setCover(new ItemStack(Items.WHITE_CARPET));
+        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.SOY_SAUCE));
+        if (vat.residueCount() != VatRecipes.RESIDUE_COUNT) {
+            helper.fail("酱油酿完酱渣数量不对");
+        }
+        vat.setProductMb(VatRecipe.Fluid.SOY_SAUCE, 0);
+        vat.takeCover();
+        for (int i = 0; i < 3; i++) {
+            click(helper, player, new ItemStack(Items.WATER_BUCKET));
+        }
+        if (vat.waterLayers() != 3) {
+            helper.fail("酱油酱渣缸未能续满三层水");
+        }
+        for (int i = 0; i < VatRecipes.VINEGAR_GRAIN_COUNT - 1; i++) {
+            click(helper, player, new ItemStack(ModItems.CORN_SEEDS.get()));
+        }
+        Item cloth = clothRug();
+        if (cloth == null) {
+            helper.succeed();
+            return;
+        }
+        click(helper, player, new ItemStack(cloth));
+        if (vat.isCovered()) {
+            helper.fail("谷物未齐时，不应盖上醋的粗布毯");
+        }
+
+        click(helper, player, new ItemStack(ModItems.CORN_SEEDS.get()));
+        click(helper, player, new ItemStack(cloth));
+        VatRecipe vinegarRecipe = VatBrewing.ready(vat);
+        if (!vat.isCovered() || !vat.cover().is(cloth) || vat.kind() != VatRecipes.Kind.VINEGAR
+                || vinegarRecipe == null || vinegarRecipe.kind() != VatRecipes.Kind.VINEGAR) {
+            helper.fail("酱油酱渣补齐谷物后应盖粗布毯并开始酿醋");
         }
         assertScheduled(helper, level, pos);
         helper.succeed();
