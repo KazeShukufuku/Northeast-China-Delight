@@ -1,0 +1,32 @@
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "SOUR_CORN",
+    "priority": 20,
+    "seal": "CLOTH",
+    "seconds": 60,
+    "liquid": {
+      "water_min": 1,
+      "water_max": 3,
+      "water_after": "CLEAR"
+    },
+    "slots": [
+      {
+        "ingredient": {
+          "matcher": "corn_kernels"
+        },
+        "fate": "CONVERT",
+        "bounds": {
+          "type": "per_layer_exact",
+          "count": 2
+        },
+        "result": "northeast_china_delight:sour_corn_kernels"
+      }
+    ],
+    "biome_seconds": {
+      "COLD": 1.5,
+      "WARM": 0.5,
+      "HOT": 0.25
+    }
+  }
+}

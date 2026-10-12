@@ -1,0 +1,56 @@
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "SOY_SAUCE",
+    "priority": 30,
+    "seal": "CARPET",
+    "seconds": 300,
+    "liquid": {
+      "water_min": 3,
+      "water_max": 3,
+      "water_after": "CLEAR",
+      "product": "SOY_SAUCE",
+      "product_mb": 2500
+    },
+    "slots": [
+      {
+        "ingredient": {
+          "item": "northeast_china_delight:soy_paste_chunk"
+        },
+        "fate": "CONVERT",
+        "bounds": {
+          "type": "exact",
+          "count": 3
+        },
+        "result": "northeast_china_delight:soy_residue"
+      },
+      {
+        "ingredient": {
+          "tag": "c:foods/seasonings/salt"
+        },
+        "fate": "CONSUME",
+        "bounds": {
+          "type": "exact",
+          "count": 3
+        },
+        "layer": "SEASONING"
+      },
+      {
+        "ingredient": {
+          "matcher": "wheat"
+        },
+        "fate": "CONSUME",
+        "bounds": {
+          "type": "exact",
+          "count": 1
+        },
+        "layer": "SEASONING"
+      }
+    ],
+    "biome_seconds": {
+      "COLD": 1.25,
+      "WARM": 0.5,
+      "HOT": 0.5
+    }
+  }
+}

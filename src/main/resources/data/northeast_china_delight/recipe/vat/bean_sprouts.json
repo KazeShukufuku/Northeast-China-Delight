@@ -1,0 +1,32 @@
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "BEAN_SPROUTS",
+    "priority": 20,
+    "seal": "CLOTH",
+    "seconds": 30,
+    "liquid": {
+      "water_min": 1,
+      "water_max": 1,
+      "water_after": "CLEAR"
+    },
+    "slots": [
+      {
+        "ingredient": {
+          "matcher": "soybean"
+        },
+        "fate": "CONVERT",
+        "bounds": {
+          "type": "between",
+          "min": 1,
+          "max": 2
+        },
+        "result": "northeast_china_delight:bean_sprouts"
+      }
+    ],
+    "biome_seconds": {
+      "COLD": 1.5,
+      "HOT": 0.75
+    }
+  }
+}

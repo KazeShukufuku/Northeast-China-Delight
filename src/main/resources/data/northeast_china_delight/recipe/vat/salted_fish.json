@@ -1,0 +1,41 @@
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "SALTED_FISH",
+    "priority": 10,
+    "seal": "PRESS",
+    "seconds": 120,
+    "liquid": {
+      "water_min": 0,
+      "water_max": 0,
+      "water_after": "KEEP"
+    },
+    "slots": [
+      {
+        "ingredient": {
+          "matcher": "raw_fish"
+        },
+        "fate": "KEEP",
+        "bounds": {
+          "type": "exact",
+          "count": 3
+        },
+        "result": "northeast_china_delight:salted_fish"
+      },
+      {
+        "ingredient": {
+          "tag": "c:foods/seasonings/salt"
+        },
+        "fate": "ABSORB",
+        "bounds": {
+          "type": "exact",
+          "count": 3
+        },
+        "layer": "SEASONING"
+      }
+    ],
+    "biome_seconds": {
+      "HOT": 1.5
+    }
+  }
+}

@@ -15,6 +15,7 @@ import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -27,6 +28,8 @@ import com.mojang.logging.LogUtils;
 public class NortheastJeiPlugin implements IModPlugin {
 
     private static final Logger LOGGER = LogUtils.getLogger();
+    private static IJeiRuntime runtime;
+    private static java.util.List<VatJeiRecipe> registeredVatRecipes = java.util.List.of();
 
     public static final RecipeType<VatJeiRecipe> VAT_TYPE =
             RecipeType.create(NortheastChinaDelight.MODID, "vat", VatJeiRecipe.class);
@@ -60,7 +63,11 @@ public class NortheastJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        registration.addRecipes(VAT_TYPE, VatJeiRecipes.all());
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection != null) {
+            registeredVatRecipes = VatJeiRecipes.all(connection.getRecipeManager());
+            registration.addRecipes(VAT_TYPE, registeredVatRecipes);
+        }
         registration.addRecipes(GRILL_TYPE, GrillJeiRecipes.all());
         //? if >=1.20.5 {
         registration.addRecipes(DRYING_TYPE, DryingJeiRecipes.all());
@@ -85,8 +92,29 @@ public class NortheastJeiPlugin implements IModPlugin {
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
+        runtime = jeiRuntime;
         LOGGER.info("大缸 JEI 配方：{} 页，源配方 {} 条",
-                VatJeiRecipes.all().size(), VatRecipes.all().size());
+                registeredVatRecipes.size(), registeredVatRecipes.size());
+        if (registeredVatRecipes.isEmpty()) {
+            refreshVatRecipes(Minecraft.getInstance().getConnection() == null ? null
+                    : Minecraft.getInstance().getConnection().getRecipeManager());
+        }
+    }
+
+    @Override
+    public void onRuntimeUnavailable() {
+        runtime = null;
+        registeredVatRecipes = java.util.List.of();
+    }
+
+    public static void refreshVatRecipes(net.minecraft.world.item.crafting.RecipeManager manager) {
+        if (runtime == null || manager == null) {
+            return;
+        }
+        java.util.List<VatJeiRecipe> updated = VatJeiRecipes.all(manager);
+        runtime.getRecipeManager().hideRecipes(VAT_TYPE, registeredVatRecipes);
+        runtime.getRecipeManager().addRecipes(VAT_TYPE, updated);
+        registeredVatRecipes = updated;
     }
 
     @Override

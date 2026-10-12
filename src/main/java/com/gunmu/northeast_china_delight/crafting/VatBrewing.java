@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * 大缸的通用引擎。这里没有任何一条针对具体物品的规则：所有"收什么、要几份、什么时候能开工、完成后变成什么、取货能拿到什么"都来自
- * {@link VatRecipes#REGISTRY} 里的 {@link VatRecipe}。想加配方 / 改数量，动那张表就行；这个文件不需要改。
+ * 数据包里的 {@link VatRecipe}。想加配方 / 改数量，动对应 JSON 即可；这个文件不需要改。
  */
 public final class VatBrewing {
 
@@ -60,7 +60,7 @@ public final class VatBrewing {
 
     @Nullable
     public static VatRecipe forInsert(VatBlockEntity vat, ItemStack stack) {
-        if (stack.isEmpty()) {
+        if (stack.isEmpty() || vat.hasMissingUnfinishedRecipe()) {
             return null;
         }
         VatRecipe.Counts now = counts(vat, null);
@@ -78,7 +78,7 @@ public final class VatBrewing {
 
         VatRecipe best = null;
         int[] bestScore = null;
-        for (VatRecipe recipe : VatRecipes.all()) {
+        for (VatRecipe recipe : VatRecipes.all(vat.getLevel())) {
             int slot = recipe.findSlotFor(stack, now);
             if (slot < 0 || !recipe.canStillMatch(water, sour)) {
                 continue;
@@ -90,13 +90,15 @@ public final class VatBrewing {
             if (bottled) {
                 continue;
             }
-            if (vat.isFermented() && recipe.kind() == vat.kind()) {
+            if (vat.isFermented() && (vat.recipeId() != null
+                    ? recipe.id().equals(vat.recipeId()) : recipe.kind() == vat.kind())) {
                 continue;
             }
-            if (processing && recipe.kind() != vat.kind()) {
+            if (processing && (vat.recipeId() != null
+                    ? !recipe.id().equals(vat.recipeId()) : recipe.kind() != vat.kind())) {
                 continue;
             }
-            int[] score = score(recipe, after, sour, vat.kind());
+            int[] score = score(recipe, after, sour, vat);
             if (bestScore == null || better(score, bestScore)) {
                 best = recipe;
                 bestScore = score;
@@ -106,11 +108,19 @@ public final class VatBrewing {
     }
     @Nullable
     public static VatRecipe ready(VatBlockEntity vat) {
+        if (vat.hasMissingUnfinishedRecipe()) {
+            return null;
+        }
         VatRecipe.Counts counts = counts(vat, null);
         int sour = vat.sourWaterMb();
         VatRecipe best = null;
         int[] bestScore = null;
-        for (VatRecipe recipe : VatRecipes.all()) {
+        for (VatRecipe recipe : VatRecipes.all(vat.getLevel())) {
+            if (vat.recipeId() != null && !vat.isFermented()
+                    && vat.getBlockState().getValue(com.gunmu.northeast_china_delight.block.Vat.PROGRESS) > 0
+                    && !recipe.id().equals(vat.recipeId())) {
+                continue;
+            }
             if (!recipe.materialsReady(counts, sour) || !sealMatches(vat, recipe)) {
                 continue;
             }
@@ -120,7 +130,7 @@ public final class VatBrewing {
             if (sour > 0 && recipe.liquid().sourWaterMb() <= 0) {
                 continue;
             }
-            int[] score = score(recipe, counts, sour, vat.kind());
+            int[] score = score(recipe, counts, sour, vat);
             if (bestScore == null || better(score, bestScore)) {
                 best = recipe;
                 bestScore = score;
@@ -131,18 +141,21 @@ public final class VatBrewing {
 
     @Nullable
     public static VatRecipe current(VatBlockEntity vat) {
+        if (vat.hasMissingUnfinishedRecipe()) {
+            return null;
+        }
         VatRecipe.Counts counts = counts(vat, null);
         int sour = vat.sourWaterMb();
         VatRecipe best = null;
         int[] bestScore = null;
-        for (VatRecipe recipe : VatRecipes.all()) {
+        for (VatRecipe recipe : VatRecipes.all(vat.getLevel())) {
             if (!recipe.canStillMatch(counts.water(), sour)) {
                 continue;
             }
             if (sour > 0 && recipe.liquid().sourWaterMb() <= 0) {
                 continue;
             }
-            int[] score = score(recipe, counts, sour, vat.kind());
+            int[] score = score(recipe, counts, sour, vat);
             if (bestScore == null || better(score, bestScore)) {
                 best = recipe;
                 bestScore = score;
@@ -161,6 +174,9 @@ public final class VatBrewing {
      */
     @Nullable
     public static VatRecipe sealRecipe(VatBlockEntity vat, ItemStack stack) {
+        if (vat.hasMissingUnfinishedRecipe()) {
+            return null;
+        }
         VatRecipe now = current(vat);
         if (now != null && acceptsSeal(now, stack)) {
             return now;
@@ -169,7 +185,7 @@ public final class VatBrewing {
         int sour = vat.sourWaterMb();
         VatRecipe best = null;
         int[] bestScore = null;
-        for (VatRecipe recipe : VatRecipes.all()) {
+        for (VatRecipe recipe : VatRecipes.all(vat.getLevel())) {
             if (!acceptsSeal(recipe, stack) || !recipe.ingredientsReady(counts)
                     || !recipe.canStillMatch(counts.water(), sour)) {
                 continue;
@@ -180,7 +196,7 @@ public final class VatBrewing {
             if (sour > 0 && recipe.liquid().sourWaterMb() <= 0) {
                 continue;
             }
-            int[] score = score(recipe, counts, sour, vat.kind());
+            int[] score = score(recipe, counts, sour, vat);
             if (bestScore == null || better(score, bestScore)) {
                 best = recipe;
                 bestScore = score;
@@ -234,10 +250,11 @@ public final class VatBrewing {
      * 但玩家要的显然是继续往辣白菜那条路上走 —— 所以谁更"贴切"优先于谁"现在就能开工"。
      */
     private static int[] score(VatRecipe recipe, VatRecipe.Counts counts, int sourWaterMb,
-                               VatRecipes.Kind current) {
+                               VatBlockEntity vat) {
         boolean ready = recipe.materialsReady(counts, sourWaterMb);
         int satisfied = recipe.satisfiedSlots(counts);
-        int sticky = recipe.kind() == current ? 1 : 0;
+        int sticky = vat.recipeId() != null ? (recipe.id().equals(vat.recipeId()) ? 1 : 0)
+                : (recipe.kind() == vat.kind() ? 1 : 0);
         int liquid = recipe.liquidFits(counts.water(), sourWaterMb) ? 1 : 0;
         int exactMatch = ready && recipe.allSlotsExact(counts) ? 1 : 0;
         return new int[] { sticky, satisfied, exactMatch, ready ? 1 : 0, liquid, -recipe.minimumTotal(counts),
@@ -254,6 +271,7 @@ public final class VatBrewing {
     }
 
     public static void complete(ServerLevel level, BlockPos pos, VatBlockEntity vat, VatRecipe recipe) {
+        vat.setRecipe(recipe);
         int layers = Math.max(1, vat.waterLayers());
         VatRecipe.Liquid liquid = recipe.liquid();
 
@@ -323,9 +341,10 @@ public final class VatBrewing {
         }
         VatRecipes.Kind kind = vat.kind();
         if (kind != VatRecipes.Kind.NONE) {
-            VatRecipes.Serving serving = VatRecipes.servingOf(vatProduct(kind));
-            if (serving != null && held.is(serving.container()) && vat.productMb(vatProduct(kind)) > 0) {
-                vat.takeOneServing(vatProduct(kind));
+            VatRecipe.Fluid product = vatProduct(vat);
+            VatRecipes.Serving serving = VatRecipes.servingOf(product);
+            if (serving != null && held.is(serving.container()) && vat.productMb(product) > 0) {
+                vat.takeOneServing(product);
                 return new ItemStack(serving.item());
             }
         }
@@ -336,17 +355,17 @@ public final class VatBrewing {
         return null;
     }
 
-    private static VatRecipe.Fluid vatProduct(VatRecipes.Kind kind) {
-        VatRecipe.Fluid fluid = VatRecipes.productOf(kind);
+    private static VatRecipe.Fluid vatProduct(VatBlockEntity vat) {
+        VatRecipe.Fluid fluid = VatRecipes.productOf(vat);
         return fluid == null ? VatRecipe.Fluid.WATER : fluid;
     }
 
     public static ItemStack takeOne(VatBlockEntity vat, List<ItemStack> refund) {
         absorbAll(vat, refund);
 
-        VatRecipe recipe = VatRecipes.recipeOf(vat.kind());
+        VatRecipe recipe = VatRecipes.recipeOf(vat);
         for (ItemStack content : vat.contentSnapshot()) {
-            ItemStack taken = takeFrom(recipe, content);
+            ItemStack taken = takeFrom(vat, recipe, content);
             if (!taken.isEmpty()) {
                 vat.removeOneMatching(stack -> stack.is(content.getItem()));
                 return taken;
@@ -356,7 +375,7 @@ public final class VatBrewing {
     }
 
     /** 这一份东西能不能取、取出来是什么 */
-    private static ItemStack takeFrom(@Nullable VatRecipe recipe, ItemStack content) {
+    private static ItemStack takeFrom(VatBlockEntity vat, @Nullable VatRecipe recipe, ItemStack content) {
         if (recipe != null) {
             for (VatRecipe.Slot slot : recipe.slots()) {
                 if (takeable(slot, content)) {
@@ -364,7 +383,10 @@ public final class VatBrewing {
                 }
             }
         }
-        for (VatRecipe other : VatRecipes.all()) {
+        if (vat.recipeId() != null) {
+            return content.copyWithCount(1);
+        }
+        for (VatRecipe other : VatRecipes.all(vat.getLevel())) {
             if (other == recipe) {
                 continue;
             }
@@ -400,15 +422,20 @@ public final class VatBrewing {
 
     private static void absorbAll(VatBlockEntity vat, List<ItemStack> refund) {
         for (ItemStack content : vat.contentSnapshot()) {
-            if (!absorbRefund(content, refund)) {
+            if (!absorbRefund(vat, content, refund)) {
                 continue;
             }
             vat.removeOneMatching(stack -> stack.is(content.getItem()));
         }
     }
 
-    private static boolean absorbRefund(ItemStack content, List<ItemStack> refund) {
-        for (VatRecipe recipe : VatRecipes.all()) {
+    private static boolean absorbRefund(VatBlockEntity vat, ItemStack content, List<ItemStack> refund) {
+        VatRecipe bound = VatRecipes.recipeOf(vat);
+        if (vat.recipeId() != null && bound == null) {
+            return false;
+        }
+        for (VatRecipe recipe : vat.recipeId() == null
+                ? VatRecipes.all(vat.getLevel()) : List.of(bound)) {
             for (VatRecipe.Slot slot : recipe.slots()) {
                 if (slot.fate() != VatRecipe.Fate.ABSORB || !slot.matcher().test(content)) {
                     continue;

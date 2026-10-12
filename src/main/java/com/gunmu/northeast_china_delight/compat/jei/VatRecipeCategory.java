@@ -162,6 +162,11 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
     }
 
     @Override
+    public ResourceLocation getRegistryName(VatJeiRecipe recipe) {
+        return recipe.id();
+    }
+
+    @Override
     public Component getTitle() {
         return Component.translatable("jei.northeast_china_delight.vat");
     }

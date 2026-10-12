@@ -11,7 +11,7 @@ import java.util.function.Predicate;
 
 /**
  * 一条大缸配方 —— 纯数据。这里只有"要什么、要多少、多长时间、完成后变成什么"，没有任何一句针对某个具体物品的 if。大缸的交互逻辑（{@link VatBrewing}）和
- * JEI 页面都只读这些字段，所以新增 / 修改配方 只需要在 {@link VatRecipes#REGISTRY} 里加一条或改一条，判定、计时、取货、JEI 全都会跟着变。
+ * JEI 页面都只读这些字段；配方从数据包读取并由游戏配方管理器同步，判定、计时、取货和 JEI 使用同一份规则。
  */
 public final class VatRecipe {
 
@@ -297,6 +297,12 @@ public final class VatRecipe {
 
     public String id() {
         return this.id;
+    }
+
+    public VatRecipe withId(String id) {
+        return new VatRecipe(id, this.kind, this.priority, this.seal, this.liquid, this.slots,
+                this.seconds, this.secondsPerLayer, this.requiresSnowyBiome,
+                this.requiredSealItem, this.biomeSecondsMultiplier);
     }
 
     public VatRecipes.Kind kind() {

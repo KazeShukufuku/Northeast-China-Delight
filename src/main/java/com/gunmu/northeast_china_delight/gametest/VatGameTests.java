@@ -5,12 +5,16 @@ import com.gunmu.northeast_china_delight.block.VatBlockEntity;
 import com.gunmu.northeast_china_delight.compat.jei.VatJeiRecipe;
 import com.gunmu.northeast_china_delight.compat.jei.VatJeiRecipes;
 import com.gunmu.northeast_china_delight.crafting.VatBrewing;
+import com.gunmu.northeast_china_delight.crafting.ModVatRecipes;
+import com.gunmu.northeast_china_delight.crafting.VatDataRecipe;
 import com.gunmu.northeast_china_delight.crafting.VatRecipe;
 import com.gunmu.northeast_china_delight.crafting.VatRecipes;
 import com.gunmu.northeast_china_delight.crafting.VatRecipeValidator;
+import com.gunmu.northeast_china_delight.fluid.ModFluids;
 import com.gunmu.northeast_china_delight.item.ModItems;
 import com.gunmu.northeast_china_delight.NortheastChinaDelight;
 import com.gunmu.northeast_china_delight.util.DdIds;
+import com.gunmu.northeast_china_delight.block.Vat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
@@ -23,6 +27,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 //? if <1.20.2 {
 /*import net.minecraftforge.gametest.GameTestHolder;
 *///?} else {
@@ -35,6 +41,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 //?}
 
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 大缸的自动化回归（跑法：{@code gradlew runGameTestServer}）。
@@ -57,10 +64,151 @@ public final class VatGameTests {
     private static final BlockPos AT = new BlockPos(1, 1, 1);
 
     @GameTest(template = "empty")
+    public static void vatPicklesProduceThreeBucketsOfSourWater(GameTestHelper helper) {
+        for (VatRecipes.Kind kind : List.of(VatRecipes.Kind.PICKLE, VatRecipes.Kind.SPICY_PICKLE)) {
+            VatRecipe recipe = VatRecipes.recipeOf(kind, helper.getLevel());
+            if (recipe == null || recipe.liquid().product() != VatRecipe.Fluid.SOUR_WATER
+                    || recipe.productMbFor(3) != 3 * VatRecipes.WATER_MB_PER_LEVEL) {
+                helper.fail("Missing or invalid sour water recipe: " + kind);
+            }
+            VatBlockEntity vat = placeVat(helper);
+            vat.setRecipe(recipe);
+            if (vat.getTankCapacity(0) != VatRecipes.SOUR_WATER_MB) {
+                helper.fail("Sour water tank is smaller than its recipe output: " + kind);
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatDisabledRecipeReturnsItsIngredients(GameTestHelper helper) {
+        VatBlockEntity vat = placeVat(helper);
+        vat.setRecipe(VatRecipe.of(VatRecipes.Kind.SPICY_PICKLE,
+                "northeast_china_delight:vat/disabled_for_test").build());
+        vat.addContent(new ItemStack(ModItems.CHILI_SAUCE.get()));
+        List<ItemStack> refunds = new ArrayList<>();
+        ItemStack taken = VatBrewing.takeOne(vat, refunds);
+        if (!taken.is(ModItems.CHILI_SAUCE.get()) || !refunds.isEmpty()) {
+            helper.fail("Disabled vat recipe should return raw inputs rather than absorb them");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatDisabledRecipeCanBeEmptiedWithoutBreaking(GameTestHelper helper) {
+        Player player = mockPlayer(helper, GameType.CREATIVE);
+        VatBlockEntity vat = placeVat(helper);
+        vat.setRecipe(VatRecipe.of(VatRecipes.Kind.SPICY_PICKLE,
+                "northeast_china_delight:vat/disabled_for_test").build());
+        vat.addContent(new ItemStack(ModItems.CHILI_SAUCE.get()));
+        helper.getLevel().setBlock(vat.getBlockPos(), vat.getBlockState().setValue(Vat.PROGRESS, 1), 3);
+        click(helper, player, ItemStack.EMPTY);
+        if (vat.countOf(ModItems.CHILI_SAUCE.get()) != 0 || vat.recipeId() != null) {
+            helper.fail("An unfinished disabled vat recipe must return its inputs on an empty-hand click");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatDisabledRecipeStopsBeforeFirstTick(GameTestHelper helper) {
+        VatBlockEntity vat = placeVat(helper);
+        vat.addWater(3 * VatRecipes.WATER_MB_PER_LEVEL);
+        for (int index = 0; index < VatRecipes.PASTE_CHUNKS; index++) {
+            vat.addContent(new ItemStack(ModItems.SOY_PASTE_CHUNK.get()));
+        }
+        for (int index = 0; index < VatRecipes.PASTE_SALT; index++) {
+            vat.addContent(new ItemStack(ModItems.SALT.get()));
+        }
+        vat.setCover(new ItemStack(Items.WHITE_CARPET));
+        vat.setRecipe(VatRecipe.of(VatRecipes.Kind.PASTE,
+                "northeast_china_delight:vat/disabled_for_test").build());
+        if (vat.getBlockState().getValue(Vat.PROGRESS) != 0 || VatBrewing.ready(vat) != null
+                || VatBrewing.current(vat) != null
+                || VatBrewing.forInsert(vat, new ItemStack(Items.WHEAT)) != null
+                || VatBrewing.sealRecipe(vat, new ItemStack(Items.WHITE_CARPET)) != null) {
+            helper.fail("Disabled vat recipe must not switch to another recipe before the first tick");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatDisabledRecipeRejectsNewLiquids(GameTestHelper helper) {
+        VatBlockEntity vat = placeVat(helper);
+        vat.setRecipe(VatRecipe.of(VatRecipes.Kind.PICKLE,
+                "northeast_china_delight:vat/disabled_for_test").build());
+        if (!vat.hasMissingUnfinishedRecipe()) {
+            helper.fail("Disabled vat recipe should not accept water or sour water");
+        }
+        vat.setKind(VatRecipes.Kind.PICKLE);
+        if (vat.hasMissingUnfinishedRecipe()) {
+            helper.fail("Unbound vat should still accept water or sour water");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatDisabledRecipeKeepsItsFinishedFluid(GameTestHelper helper) {
+        VatBlockEntity vat = placeVat(helper);
+        helper.getLevel().setBlock(vat.getBlockPos(), vat.getBlockState().setValue(Vat.FERMENTED, true), 3);
+        vat.setRecipe(VatRecipe.of(VatRecipes.Kind.VINEGAR,
+                "northeast_china_delight:vat/disabled_for_test")
+                .product(VatRecipe.Fluid.WHITE_VINEGAR, VatRecipes.SERVING_MB, false).build());
+        vat.setProductMb(VatRecipe.Fluid.WHITE_VINEGAR, VatRecipes.SERVING_MB);
+        if (vat.getFluidInTank(0).getFluid() != ModFluids.whiteVinegarSource()) {
+            helper.fail("Disabled vat recipe should keep its brewed fluid accessible");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
     public static void vatRecipesPassSelfCheck(GameTestHelper helper) {
-        List<String> problems = VatRecipeValidator.check(VatRecipes.all());
+        List<String> problems = VatRecipeValidator.check(VatRecipes.all(helper.getLevel()), true);
         if (!problems.isEmpty()) {
             helper.fail("配方自检没过：" + problems);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatDataPackIdsOverrideAndDisable(GameTestHelper helper) {
+        ResourceLocation id = DdIds.of(NortheastChinaDelight.MODID, "vat/bean_sprouts");
+        //? if <1.20.5 {
+        /*VatDataRecipe source = (VatDataRecipe) helper.getLevel().getRecipeManager().byKey(id)
+                .orElseThrow();
+        *///?} else {
+        VatDataRecipe source = (VatDataRecipe) helper.getLevel().getRecipeManager().byKey(id)
+                .orElseThrow().value();
+        //?}
+        JsonObject override = JsonParser.parseString("""
+                {"type":"northeast_china_delight:vat", "config":{
+                  "kind":"BEAN_SPROUTS", "priority":20, "seal":"CLOTH", "seconds":7,
+                  "liquid":{"water_min":1,"water_max":1,"water_after":"CLEAR"},
+                  "slots":[{"ingredient":{"item":"northeast_china_delight:soybean"},
+                    "bounds":{"type":"exact","count":1},"fate":"CONVERT",
+                    "result":"northeast_china_delight:bean_sprouts"}]
+                }}
+                """).getAsJsonObject();
+        //? if <1.20.5 {
+        /*VatDataRecipe changed = ModVatRecipes.SERIALIZER.get().fromJson(id, override);
+        *///?} else {
+        VatDataRecipe changed = ModVatRecipes.SERIALIZER.get().codec()
+                .codec().parse(com.mojang.serialization.JsonOps.INSTANCE, override).getOrThrow();
+        //?}
+        if (source.rule(id) == null || source.rule(id).seconds() != VatRecipes.BEAN_SPROUTS_SECONDS
+                || !source.rule(id).id().equals(id.toString())
+                || changed.rule(id) == null || changed.rule(id).seconds() != 7) {
+            helper.fail("数据包大缸配方的路径应成为稳定 ID");
+        }
+        JsonObject disabled = override.deepCopy();
+        disabled.getAsJsonObject("config").addProperty("disabled", true);
+        //? if <1.20.5 {
+        /*VatDataRecipe removed = ModVatRecipes.SERIALIZER.get().fromJson(id, disabled);
+        *///?} else {
+        VatDataRecipe removed = ModVatRecipes.SERIALIZER.get().codec()
+                .codec().parse(com.mojang.serialization.JsonOps.INSTANCE, disabled).getOrThrow();
+        //?}
+        if (removed.rule(id) != null) {
+            helper.fail("被数据包禁用的大缸配方不应继续提供规则");
         }
         helper.succeed();
     }
@@ -74,7 +222,7 @@ public final class VatGameTests {
     }
 
     private static void checkSaltFollowsMainIngredient(GameTestHelper helper, VatRecipes.Kind kind, String name) {
-        VatRecipe recipe = VatRecipes.recipeOf(kind);
+        VatRecipe recipe = VatRecipes.recipeOf(kind, helper.getLevel());
         int[] counts = recipe.displayedCounts(0);
         if (counts.length != 2 || counts[0] != counts[1]) {
             helper.fail(name + "展示的份数不对（主料 " + counts[0] + " / 盐 " + counts[1] + "）");
@@ -83,7 +231,7 @@ public final class VatGameTests {
 
     @GameTest(template = "empty")
     public static void vatJeiPagesAreGenerated(GameTestHelper helper) {
-        for (VatRecipe recipe : VatRecipes.all()) {
+        for (VatRecipe recipe : VatRecipes.all(helper.getLevel())) {
             List<VatJeiRecipe> pages = VatJeiRecipes.pagesFor(recipe);
             if (pages.size() != 1) {
                 helper.fail("配方 " + recipe.id() + " 在 JEI 里应该正好一页，实际 " + pages.size() + " 页");
@@ -141,7 +289,7 @@ public final class VatGameTests {
         }
         vat.setKind(VatRecipes.Kind.PASTE);
         vat.setCover(new ItemStack(Items.WHITE_CARPET));
-        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.PASTE));
+        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.PASTE, level));
         if (vat.residueCount() != VatRecipes.RESIDUE_COUNT) {
             helper.fail("大酱酿完缸里应该有 " + VatRecipes.RESIDUE_COUNT + " 份酱渣，实际 " + vat.residueCount());
         }
@@ -195,7 +343,7 @@ public final class VatGameTests {
         vat.addContent(new ItemStack(Items.WHEAT));
         vat.setKind(VatRecipes.Kind.SOY_SAUCE);
         vat.setCover(new ItemStack(Items.WHITE_CARPET));
-        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.SOY_SAUCE));
+        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.SOY_SAUCE, level));
         if (vat.residueCount() != VatRecipes.RESIDUE_COUNT) {
             helper.fail("酱油酿完酱渣数量不对");
         }
@@ -246,7 +394,7 @@ public final class VatGameTests {
             vat.addContent(new ItemStack(ModItems.SALT.get()));
         }
         vat.setKind(VatRecipes.Kind.PICKLE);
-        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.PICKLE));
+        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.PICKLE, level));
         if (vat.sourWaterMb() < VatRecipes.SOUR_WATER_MB) {
             helper.fail("泡菜腌完应该有酸引水，实际 " + vat.sourWaterMb() + " mB");
         }

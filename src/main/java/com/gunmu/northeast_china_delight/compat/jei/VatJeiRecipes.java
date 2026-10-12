@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 大缸在 JEI 里展示的全部配方 —— 从 {@link VatRecipes#REGISTRY} 自动生成，这里不再手写任何一份"投料 / 时长 / 产物"的副本，所以游戏里
+ * 大缸在 JEI 里展示的全部配方 —— 从数据包配方自动生成，这里不再手写任何一份"投料 / 时长 / 产物"的副本，所以游戏里
  * 的判定和 JEI 页面永远一致。
  */
 public final class VatJeiRecipes {
@@ -29,25 +29,16 @@ public final class VatJeiRecipes {
     private static final int MAX_CANDIDATES = 12;
     private static final long ONE_LAYER = VatRecipes.WATER_MB_PER_LEVEL;
 
-    private static List<VatJeiRecipe> recipes;
-
-    public static List<VatJeiRecipe> all() {
-        if (recipes == null) {
-            recipes = build();
+    public static List<VatJeiRecipe> all(net.minecraft.world.item.crafting.RecipeManager manager) {
+        List<VatJeiRecipe> list = new ArrayList<>();
+        for (VatRecipe recipe : VatRecipes.all(manager)) {
+            list.addAll(expand(recipe));
         }
-        return recipes;
+        return List.copyOf(list);
     }
 
     public static List<VatJeiRecipe> pagesFor(VatRecipe recipe) {
         return expand(recipe);
-    }
-
-    private static List<VatJeiRecipe> build() {
-        List<VatJeiRecipe> list = new ArrayList<>();
-        for (VatRecipe recipe : VatRecipes.all()) {
-            list.addAll(expand(recipe));
-        }
-        return List.copyOf(list);
     }
 
     private static List<VatJeiRecipe> expand(VatRecipe recipe) {
@@ -60,7 +51,8 @@ public final class VatJeiRecipes {
         for (int level : levelsOf(recipe)) {
             states.add(stateOf(recipe, candidates, level));
         }
-        return List.of(new VatJeiRecipe(List.copyOf(states)));
+        return List.of(new VatJeiRecipe(com.gunmu.northeast_china_delight.util.DdIds.parse(recipe.id()),
+                List.copyOf(states)));
     }
 
     private static int[] levelsOf(VatRecipe recipe) {
