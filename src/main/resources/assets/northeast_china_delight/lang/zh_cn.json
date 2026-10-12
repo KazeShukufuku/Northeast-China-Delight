@@ -330,7 +330,7 @@
   "message.northeast_china_delight.grill.no_food": "烤架上还没有食材",
   "message.northeast_china_delight.grill.brushed_sauce": "给这份食材刷上了 %s",
   "jei.northeast_china_delight.grill.seasoning_sauce": "1 份·需刷子",
-  "tooltip.northeast_china_delight.bottle_amount": "剩余 %s / %s mB（还能用 %s 次）",
+  "tooltip.northeast_china_delight.bottle_amount": "剩余 %s / %s mB",
   "tooltip.northeast_china_delight.deep_fry_oil": "油炸菜会一次用光一整瓶；炒、炖、煎照常每次 50 mB",
   "message.northeast_china_delight.vat.bottle_full": "这瓶调料还是满的",
   "message.northeast_china_delight.vat.bottle_mismatch": "缸里的液体和这个瓶子对不上",

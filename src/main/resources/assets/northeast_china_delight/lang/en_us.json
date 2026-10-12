@@ -313,7 +313,7 @@
   "message.northeast_china_delight.grill.no_food": "There's no food on the grill yet",
   "message.northeast_china_delight.grill.brushed_sauce": "Brushed %s onto that piece",
   "jei.northeast_china_delight.grill.seasoning_sauce": "1 pc · use brush",
-  "tooltip.northeast_china_delight.bottle_amount": "%s / %s mB left (%s uses)",
+  "tooltip.northeast_china_delight.bottle_amount": "%s / %s mB left",
   "tooltip.northeast_china_delight.deep_fry_oil": "Deep-fried dishes burn a whole bottle; stir-fried, stewed and pan-fried dishes use 50 mB",
   "message.northeast_china_delight.vat.bottle_full": "This bottle is already full",
   "message.northeast_china_delight.vat.bottle_mismatch": "The vat doesn't hold that kind of liquid",

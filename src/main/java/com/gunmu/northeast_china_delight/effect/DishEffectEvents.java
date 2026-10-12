@@ -109,8 +109,7 @@ public class DishEffectEvents {
         if (SeasoningBottleItem.isBottle(stack)) {
             event.getToolTip().add(Component.translatable("tooltip.northeast_china_delight.bottle_amount",
                             SeasoningBottleItem.remainingMb(stack),
-                            SeasoningBottleItem.CAPACITY_MB,
-                            SeasoningBottleItem.remainingUses(stack))
+                            SeasoningBottleItem.CAPACITY_MB)
                     .withStyle(ChatFormatting.GRAY));
         }
         if (stack.is(ModItems.DEEP_FRY_OILS)) {

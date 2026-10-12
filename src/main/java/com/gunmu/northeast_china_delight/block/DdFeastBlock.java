@@ -1,7 +1,6 @@
 package com.gunmu.northeast_china_delight.block;
 
 import com.mojang.serialization.MapCodec;
-import com.gunmu.northeast_china_delight.item.ModItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvents;
@@ -120,9 +119,8 @@ public class DdFeastBlock extends Block {
             stack.shrink(1);
             popResource(level, pos, new ItemStack(this.servingItem.get()));
             if (servings == 1) {
-                // 最后一份：连方块一起收走，把大脸盆还给玩家
-                level.removeBlock(pos, false);
-                popResource(level, pos, new ItemStack(ModItems.LARGE_BASIN.get()));
+                // 最后一份：盆不倒空也不掉出来 —— 原地变成普通的大脸盆方块（想收走就把它敲下来）
+                level.setBlock(pos, ModBlocks.LARGE_BASIN.get().defaultBlockState(), Block.UPDATE_ALL);
             } else {
                 level.setBlock(pos, state.setValue(SERVINGS, servings - 1), Block.UPDATE_ALL);
             }
@@ -157,8 +155,8 @@ public class DdFeastBlock extends Block {
             stack.shrink(1);
             popResource(level, pos, new ItemStack(this.servingItem.get()));
             if (servings == 1) {
-                level.removeBlock(pos, false);
-                popResource(level, pos, new ItemStack(ModItems.LARGE_BASIN.get()));
+                // 最后一份：盆不倒空也不掉出来 —— 原地变成普通的大脸盆方块（想收走就把它敲下来）
+                level.setBlock(pos, ModBlocks.LARGE_BASIN.get().defaultBlockState(), Block.UPDATE_ALL);
             } else {
                 level.setBlock(pos, state.setValue(SERVINGS, servings - 1), Block.UPDATE_ALL);
             }
