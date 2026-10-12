@@ -275,12 +275,12 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
                     .setSlotName(SLOT_LIQUID), this.guiHelper);
         }
 
-        boolean hasResultItem = !state.result().isEmpty();
+        boolean hasResultItem = state.hasResultItem();
         boolean hasResultFluid = state.hasResultFluid();
         if (hasResultItem) {
             withSlotBackground(builder.addSlot(RecipeIngredientRole.OUTPUT, OUTPUT_X,
                             hasResultFluid ? OUTPUT_ITEM_Y : OUTPUT_ONLY_Y)
-                    .addItemStack(state.result())
+                    .addItemStacks(state.results())
                     .setSlotName(SLOT_RESULT), this.guiHelper);
         }
         if (hasResultFluid) {
@@ -454,7 +454,7 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
             overrideLayer(base.seasoning(), state.seasoning(), SEASONING_SLOTS);
             overrideLayer(base.primary(), state.primary(), PRIMARY_SLOTS);
             overrideFluid(SLOT_LIQUID, base.liquid(), base.liquidMb(), state.liquid(), state.liquidMb());
-            overrideItem(SLOT_RESULT, base.result(), state.result());
+            overrideResults(SLOT_RESULT, base.results(), state.results());
             overrideFluid(SLOT_RESULT_FLUID, base.resultFluid(), base.resultFluidMb(),
                     state.resultFluid(), state.resultFluidMb());
         }
@@ -481,13 +481,16 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
             });
         }
 
-        private void overrideItem(String slotName, ItemStack base, ItemStack now) {
+        private void overrideResults(String slotName, List<ItemStack> base, List<ItemStack> now) {
             this.slots.findSlotByName(slotName).ifPresent(slot -> {
-                if (sameItem(base, now)) {
+                if (sameItems(base, now)) {
                     slot.clearDisplayOverrides();
                     return;
                 }
-                resetOverrides(slot).addItemStack(now);
+                IIngredientConsumer consumer = resetOverrides(slot);
+                for (ItemStack stack : now) {
+                    consumer.addItemStack(stack);
+                }
             });
         }
 

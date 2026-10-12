@@ -1,10 +1,12 @@
 package com.gunmu.northeast_china_delight.crafting;
 
+import com.gunmu.northeast_china_delight.block.Vat;
 import com.gunmu.northeast_china_delight.block.VatBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -147,6 +149,57 @@ public final class VatBrewing {
             }
         }
         return best;
+    }
+
+    /**
+     * 手里这个封口物该盖到哪条配方上。
+     *
+     * <p>默认就是缸现在认的那条（{@link #current}）：先盖布、后倒水这种玩法靠的就是它。但「一缸两吃」会卡在旧
+     * kind 上 —— 大酱 / 酱油取空液体、只剩酱渣时加水加谷物，缸里其实已经是醋的料，可 kind 还是 PASTE，
+     * {@link #current} 里 sticky 压过满足的格子数，封口这一关只认地毯，粗布毯放不上去，缸永远转不到醋。
+     * 所以当前配方不肯收这个封口物时，再找一条「材料都齐、只差封口」的配方。
+     */
+    @Nullable
+    public static VatRecipe sealRecipe(VatBlockEntity vat, ItemStack stack) {
+        VatRecipe now = current(vat);
+        if (now != null && acceptsSeal(now, stack)) {
+            return now;
+        }
+        VatRecipe.Counts counts = counts(vat, null);
+        int sour = vat.sourWaterMb();
+        VatRecipe best = null;
+        int[] bestScore = null;
+        for (VatRecipe recipe : VatRecipes.all()) {
+            if (!acceptsSeal(recipe, stack) || !recipe.ingredientsReady(counts)
+                    || !recipe.canStillMatch(counts.water(), sour)) {
+                continue;
+            }
+            if (recipe.requiresSnowyBiome() && !isSnowyBiome(vat)) {
+                continue;
+            }
+            if (sour > 0 && recipe.liquid().sourWaterMb() <= 0) {
+                continue;
+            }
+            int[] score = score(recipe, counts, sour, vat.kind());
+            if (bestScore == null || better(score, bestScore)) {
+                best = recipe;
+                bestScore = score;
+            }
+        }
+        return best;
+    }
+
+    /** 手里这个封口物能不能盖在这条配方上：石 / 毯 / 布三大类对得上；「顶上必须压某一样东西」的还要物品对得上 */
+    private static boolean acceptsSeal(VatRecipe recipe, ItemStack stack) {
+        return switch (recipe.seal()) {
+            case NONE -> false;
+            case PRESS -> {
+                java.util.function.Predicate<ItemStack> required = recipe.requiredSealItem();
+                yield required != null ? required.test(stack) : Vat.isPressStone(stack);
+            }
+            case CARPET -> stack.is(ItemTags.WOOL_CARPETS);
+            case CLOTH -> Vat.isClothRug(stack);
+        };
     }
 
     public static boolean sealMatches(VatBlockEntity vat, VatRecipe.Seal seal) {

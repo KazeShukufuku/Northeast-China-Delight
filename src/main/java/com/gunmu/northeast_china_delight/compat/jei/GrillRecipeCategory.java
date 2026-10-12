@@ -143,10 +143,10 @@ public class GrillRecipeCategory implements IRecipeCategory<GrillJeiRecipe> {
         withSlotBackground(builder.addSlot(RecipeIngredientRole.INPUT, INPUT_X, INPUT_Y)
                 .addItemStacks(recipe.ingredient()), this.guiHelper);
 
-        List<ItemStack> seasonings = recipe.seasonings();
+        List<List<ItemStack>> seasonings = recipe.seasonings();
         for (int i = 0; i < seasonings.size() && i < MAX_SEASONINGS; i++) {
             withSlotBackground(builder.addSlot(RecipeIngredientRole.INPUT, SEASONING_X + i * STEP, ROW_Y)
-                    .addItemStack(seasonings.get(i)), this.guiHelper);
+                    .addItemStacks(seasonings.get(i)), this.guiHelper);
         }
 
         withSlotBackground(builder.addSlot(RecipeIngredientRole.OUTPUT, RESULT_X, ROW_Y)
@@ -233,20 +233,12 @@ public class GrillRecipeCategory implements IRecipeCategory<GrillJeiRecipe> {
         pose.popPose();
     }
 
-    private static void drawSeasoningAmounts(GuiGraphics graphics, List<ItemStack> seasonings) {
+    private static void drawSeasoningAmounts(GuiGraphics graphics, List<List<ItemStack>> seasonings) {
         Font font = Minecraft.getInstance().font;
-        Component bottleText = Component.translatable("jei.northeast_china_delight.grill.seasoning_amount_brush",
-                SeasoningBottleItem.GRILL_DOSE_MB);
-        Component sauceText = Component.translatable("jei.northeast_china_delight.grill.seasoning_sauce");
         PoseStack pose = graphics.pose();
         for (int i = 0; i < seasonings.size() && i < MAX_SEASONINGS; i++) {
-            ItemStack seasoning = seasonings.get(i);
-            Component text;
-            if (GrillSeasonings.isSauce(seasoning)) {
-                text = sauceText;
-            } else if (seasoning.getItem() instanceof SeasoningBottleItem) {
-                text = bottleText;
-            } else {
+            Component text = seasoningAmountText(seasonings.get(i));
+            if (text == null) {
                 continue;
             }
             float textWidth = font.width(text) * AMOUNT_TEXT_SCALE;
@@ -257,6 +249,23 @@ public class GrillRecipeCategory implements IRecipeCategory<GrillJeiRecipe> {
             graphics.drawString(font, text, 0, 0, TIME_COLOR, false);
             pose.popPose();
         }
+    }
+
+    /** 这一格调料要写什么用量小字：格子里只要有一份得用刷子刷的调料就写，都没有就不写 */
+    private static Component seasoningAmountText(List<ItemStack> candidates) {
+        boolean bottle = false;
+        for (ItemStack seasoning : candidates) {
+            if (GrillSeasonings.isSauce(seasoning)) {
+                return Component.translatable("jei.northeast_china_delight.grill.seasoning_sauce");
+            }
+            if (seasoning.getItem() instanceof SeasoningBottleItem) {
+                bottle = true;
+            }
+        }
+        return bottle
+                ? Component.translatable("jei.northeast_china_delight.grill.seasoning_amount_brush",
+                        SeasoningBottleItem.GRILL_DOSE_MB)
+                : null;
     }
 
     //? if >=1.20.5 {
@@ -278,7 +287,7 @@ public class GrillRecipeCategory implements IRecipeCategory<GrillJeiRecipe> {
      * 瓶装调料的用量：在对应槽位下面写一行小字（比如「10 mB」）。
      * 盐、糖这类不是瓶装的就不写 —— 它们一次消耗一份，没有 mB 概念。
      ^/
-    private record SeasoningAmountWidget(List<ItemStack> seasonings) implements IRecipeWidget {
+    private record SeasoningAmountWidget(List<List<ItemStack>> seasonings) implements IRecipeWidget {
 
         @Override
         public ScreenPosition getPosition() {

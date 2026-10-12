@@ -21,9 +21,8 @@ public final class GrillJeiRecipes {
             List<ItemStack> ingredient = Arrays.stream(recipe.input().getItems())
                     .map(ItemStack::copy)
                     .toList();
-            List<ItemStack> seasonings = recipe.seasonings().stream()
-                    .flatMap(ing -> Arrays.stream(ing.getItems()))
-                    .map(ItemStack::copy)
+            List<List<ItemStack>> seasonings = recipe.seasonings().stream()
+                    .map(ing -> Arrays.stream(ing.getItems()).map(ItemStack::copy).toList())
                     .toList();
             list.add(new GrillJeiRecipe(ingredient, seasonings, recipe.result().copy(), recipe.seconds()));
         }

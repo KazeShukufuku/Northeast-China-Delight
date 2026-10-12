@@ -32,7 +32,7 @@ public record VatJeiRecipe(List<State> states) {
             List<List<ItemStack>> seasoning,
             List<List<ItemStack>> primary,
             List<ItemStack> seal,
-            ItemStack result,
+            List<ItemStack> results,
             @Nullable Fluid resultFluid,
             long resultFluidMb,
             long resultFluidCapacityMb,
@@ -41,6 +41,10 @@ public record VatJeiRecipe(List<State> states) {
 
         public boolean hasLiquid() {
             return this.liquid != null && this.liquidMb > 0;
+        }
+
+        public boolean hasResultItem() {
+            return !this.results.isEmpty();
         }
 
         public boolean hasResultFluid() {
