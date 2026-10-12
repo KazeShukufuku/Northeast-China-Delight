@@ -112,6 +112,9 @@ public class Vat extends Block implements EntityBlock {
      * 所以先卡一道总容量：满了就不再收，免得液面显示停在 3 层、实际却越积越多。
      */
     private static boolean canPourSourWater(VatBlockEntity vat, BlockState state) {
+        if (vat.hasMissingUnfinishedRecipe()) {
+            return false;
+        }
         int capacity = ModBlockStateProperties.VAT_MAX_WATER * VatRecipes.WATER_MB_PER_LEVEL;
         if (vat.waterMb() + vat.sourWaterMb() + VatRecipes.SERVING_MB > capacity) {
             return false;
@@ -179,15 +182,16 @@ public class Vat extends Block implements EntityBlock {
         }
         VatRecipe recipe = VatBrewing.ready(vat);
         if (recipe != null) {
-            if (vat.kind() != recipe.kind()) {
-                vat.setKind(recipe.kind());
-            }
+            vat.setRecipe(recipe);
             level.scheduleTick(pos, level.getBlockState(pos).getBlock(), VatBrewing.stepTicks(recipe, vat));
         }
     }
 
     /** 现在能不能再往缸里倒一桶水 */
     private static boolean canAddWater(VatBlockEntity vat) {
+        if (vat.hasMissingUnfinishedRecipe()) {
+            return false;
+        }
         if (vat.waterLayers() >= ModBlockStateProperties.VAT_MAX_WATER) {
             return false;
         }
@@ -255,6 +259,10 @@ public class Vat extends Block implements EntityBlock {
             return InteractionResult.PASS;
         }
 
+        if (stack.isEmpty() && vat.hasMissingUnfinishedRecipe()) {
+            return returnRemovedRecipe(level, pos, state, vat, player);
+        }
+
         if (!state.getValue(FERMENTED) && !stack.is(Items.WATER_BUCKET)) {
             if (!level.isClientSide && stack.isEmpty()) {
                 showProgress(player, level, pos, state, vat);
@@ -304,11 +312,11 @@ public class Vat extends Block implements EntityBlock {
                 hint(player, "message.northeast_china_delight.vat.bottle_full");
                 return InteractionResult.sidedSuccess(false);
             }
-            if (VatRecipes.bottleFor(vat.kind()) != stack.getItem()) {
+            if (VatRecipes.bottleFor(vat) != stack.getItem()) {
                 hint(player, "message.northeast_china_delight.vat.bottle_mismatch");
                 return InteractionResult.sidedSuccess(false);
             }
-            int moved = vat.drainProduct(vat.kind(), SeasoningBottleItem.usedMb(stack));
+            int moved = vat.drainProduct(SeasoningBottleItem.usedMb(stack));
             if (moved <= 0) {
                 hint(player, "message.northeast_china_delight.vat.bottle_empty");
                 return InteractionResult.sidedSuccess(false);
@@ -481,6 +489,10 @@ public class Vat extends Block implements EntityBlock {
             return InteractionResult.sidedSuccess(level.isClientSide());
         }
 
+        if (vat.hasMissingUnfinishedRecipe()) {
+            return returnRemovedRecipe(level, pos, state, vat, player);
+        }
+
         if (!state.getValue(FERMENTED)) {
             if (!level.isClientSide) {
                 showProgress(player, level, pos, state, vat);
@@ -501,7 +513,7 @@ public class Vat extends Block implements EntityBlock {
             return InteractionResult.sidedSuccess(level.isClientSide());
         }
 
-        VatRecipe recipe = VatRecipes.recipeOf(vat.kind());
+        VatRecipe recipe = VatRecipes.recipeOf(vat);
         if (vat.hasProductLiquid() && (recipe == null || recipe.keepSlots().isEmpty())) {
             if (!level.isClientSide) {
                 hint(player, liquidHintKey(vat.kind()));
@@ -522,6 +534,19 @@ public class Vat extends Block implements EntityBlock {
             if (vat.contents().isEmpty() && !vat.hasProductLiquid()) {
                 reset(level, pos, state, vat);
             }
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide());
+    }
+
+    private static InteractionResult returnRemovedRecipe(Level level, BlockPos pos, BlockState state,
+                                                         VatBlockEntity vat, Player player) {
+        if (!level.isClientSide) {
+            give(player, vat.takePress());
+            give(player, vat.takeCover());
+            for (ItemStack content : vat.contentSnapshot()) {
+                give(player, content);
+            }
+            reset(level, pos, state, vat);
         }
         return InteractionResult.sidedSuccess(level.isClientSide());
     }
@@ -557,7 +582,7 @@ public class Vat extends Block implements EntityBlock {
         if (!level.isClientSide && destroyed != null) {
             VatBlockEntity vat = destroyed;
             for (ItemStack content : vat.contents()) {
-                if (isAbsorbedSeasoning(content)) {
+                if (isAbsorbedSeasoning(level, destroyed, content)) {
                     continue;
                 }
                 popResource(level, pos, content);
@@ -577,11 +602,15 @@ public class Vat extends Block implements EntityBlock {
      * 盐在任何配方里都是调料；ABSORB / CONSUME 的格子（辣椒酱、鱼露、虾酱、小麦、谷物…）
      * 也都已经被大缸吸收，不该在破坏时掉出来。
      */
-    private static boolean isAbsorbedSeasoning(ItemStack stack) {
+    private static boolean isAbsorbedSeasoning(Level level, VatBlockEntity vat, ItemStack stack) {
         if (VatRecipes.isSalt(stack)) {
             return true;
         }
-        for (VatRecipe recipe : VatRecipes.all()) {
+        VatRecipe bound = VatRecipes.recipeOf(vat);
+        if (bound == null && vat.recipeId() != null) {
+            return false;
+        }
+        for (VatRecipe recipe : vat.recipeId() == null ? VatRecipes.all(level) : List.of(bound)) {
             for (VatRecipe.Slot slot : recipe.slots()) {
                 if (slot.fate() != VatRecipe.Fate.KEEP && slot.fate() != VatRecipe.Fate.CONVERT
                         && slot.matcher().test(stack)) {

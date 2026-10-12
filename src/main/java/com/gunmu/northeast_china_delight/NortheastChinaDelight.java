@@ -8,6 +8,8 @@ import com.gunmu.northeast_china_delight.block.VatBlockEntity;
 import com.gunmu.northeast_china_delight.client.GrillCampfireRenderer;
 import com.gunmu.northeast_china_delight.client.VatRenderer;
 import com.gunmu.northeast_china_delight.compat.create.ModFanProcessingTypes;
+import com.gunmu.northeast_china_delight.compat.jei.VatJeiSync;
+import com.gunmu.northeast_china_delight.crafting.ModVatRecipes;
 import com.gunmu.northeast_china_delight.effect.DishEffectEvents;
 import com.gunmu.northeast_china_delight.effect.ModEffects;
 import com.gunmu.northeast_china_delight.event.ModGameplayEvents;
@@ -154,6 +156,7 @@ public class NortheastChinaDelight
         ModBlocks.register(modEventBus);
         ModFluids.register(modEventBus);
         ModBlockEntities.register(modEventBus);
+        ModVatRecipes.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
         ModLootModifiers.register(modEventBus);
         ModEffects.register(modEventBus);
@@ -161,6 +164,17 @@ public class NortheastChinaDelight
         ModVillagerProfessions.register(modEventBus);
         ModMapDecorations.register(modEventBus);
         ModWorldGen.register(modEventBus);
+        //? if <1.20.2 {
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist.isClient()
+                && net.minecraftforge.fml.ModList.get().isLoaded("jei")) {
+            VatJeiSync.register();
+        }
+        //?} else {
+        /*if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()
+                && net.neoforged.fml.ModList.get().isLoaded("jei")) {
+            VatJeiSync.register();
+        }
+        *///?}
         // 模组配置（菜肴方块形态的总开关）
         //? if <1.20.2 {
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(

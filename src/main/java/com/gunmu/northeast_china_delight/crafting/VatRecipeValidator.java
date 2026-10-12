@@ -26,6 +26,10 @@ public final class VatRecipeValidator {
 
     /** 跑一遍全部规则，返回问题清单（空 = 全过） */
     public static List<String> check(List<VatRecipe> recipes) {
+        return check(recipes, false);
+    }
+
+    public static List<String> check(List<VatRecipe> recipes, boolean allowMissingKinds) {
         List<String> problems = new ArrayList<>();
         Map<VatRecipes.Kind, String> kinds = new LinkedHashMap<>();
         List<ItemStack> everyItem = allItems();
@@ -37,9 +41,11 @@ public final class VatRecipeValidator {
             checkDisplayedCounts(recipe, problems);
             checkOverlappingSlots(recipe, everyItem, problems);
         }
-        for (VatRecipes.Kind kind : VatRecipes.Kind.values()) {
-            if (kind != VatRecipes.Kind.NONE && !kinds.containsKey(kind)) {
-                problems.add("Kind." + kind + " 没有任何配方：大缸永远不会进入这个状态");
+        if (!allowMissingKinds) {
+            for (VatRecipes.Kind kind : VatRecipes.Kind.values()) {
+                if (kind != VatRecipes.Kind.NONE && !kinds.containsKey(kind)) {
+                    problems.add("Kind." + kind + " 没有任何配方：大缸永远不会进入这个状态");
+                }
             }
         }
         return problems;
@@ -52,8 +58,8 @@ public final class VatRecipeValidator {
         }
         String other = kinds.putIfAbsent(recipe.kind(), recipe.id());
         if (other != null) {
-            problems.add("Kind." + recipe.kind() + " 同时被配方 " + other + " 和 " + recipe.id()
-                    + " 使用：大缸只记 Kind，取货 / 流体 / Jade 都会取到 priority 高的那一条");
+            problems.add("WARN Kind." + recipe.kind() + " 同时被配方 " + other + " 和 " + recipe.id()
+                    + " 使用：旧存档按 Kind 回退时选 priority 高的配方");
         }
     }
 

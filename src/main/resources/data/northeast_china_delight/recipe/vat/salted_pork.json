@@ -1,0 +1,43 @@
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "MEAT",
+    "priority": 10,
+    "seal": "PRESS",
+    "seconds": 120,
+    "liquid": {
+      "water_min": 0,
+      "water_max": 0,
+      "water_after": "KEEP"
+    },
+    "slots": [
+      {
+        "ingredient": {
+          "matcher": "raw_pork"
+        },
+        "fate": "KEEP",
+        "bounds": {
+          "type": "between",
+          "min": 1,
+          "max": 6
+        },
+        "result": "northeast_china_delight:salted_pork"
+      },
+      {
+        "ingredient": {
+          "tag": "c:foods/seasonings/salt"
+        },
+        "fate": "ABSORB",
+        "bounds": {
+          "type": "half_of",
+          "slot": 0,
+          "max": 3
+        },
+        "layer": "SEASONING"
+      }
+    ],
+    "biome_seconds": {
+      "HOT": 1.5
+    }
+  }
+}

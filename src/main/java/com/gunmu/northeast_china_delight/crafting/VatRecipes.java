@@ -1,8 +1,8 @@
 package com.gunmu.northeast_china_delight.crafting;
 
-import com.mojang.logging.LogUtils;
 import com.gunmu.northeast_china_delight.item.ModItems;
 import com.gunmu.northeast_china_delight.ModTags;
+import com.gunmu.northeast_china_delight.block.VatBlockEntity;
 import com.gunmu.northeast_china_delight.util.DdIds;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -10,20 +10,16 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 /**
- * 大缸的全部规则集中在这里。目前仍然写在代码里，但结构已经和将来的数据包配方一一对应，之后要做成自定义配方类型时把这张表换成 JSON 读取即可。
+ * 大缸的共享辅助规则；配方本体由数据包加载，ID 即资源路径。
  */
 public final class VatRecipes {
-
-    private static final Logger LOGGER = LogUtils.getLogger();
 
     private VatRecipes() {
     }
@@ -108,17 +104,6 @@ public final class VatRecipes {
     public static final int KVASS_SECONDS = 60;
     public static final int FROZEN_PEAR_SECONDS = 30;
 
-    private static final java.util.function.Consumer<java.util.EnumMap<VatRecipe.BiomeBand, Float>> FERMENT =
-            m -> { m.put(VatRecipe.BiomeBand.COLD, 1.5F); m.put(VatRecipe.BiomeBand.WARM, 0.5F); m.put(VatRecipe.BiomeBand.HOT, 0.25F); };
-    /** 酱酵类（大酱/酱油/醋/白醋/鱼露/虾酱）：热带不减半那么多，防止过快 */
-    private static final java.util.function.Consumer<java.util.EnumMap<VatRecipe.BiomeBand, Float>> BREW =
-            m -> { m.put(VatRecipe.BiomeBand.COLD, 1.25F); m.put(VatRecipe.BiomeBand.WARM, 0.5F); m.put(VatRecipe.BiomeBand.HOT, 0.5F); };
-    private static final java.util.function.Consumer<java.util.EnumMap<VatRecipe.BiomeBand, Float>> SPROUT =
-            m -> { m.put(VatRecipe.BiomeBand.COLD, 1.5F); m.put(VatRecipe.BiomeBand.HOT, 0.75F); };
-    private static final java.util.function.Consumer<java.util.EnumMap<VatRecipe.BiomeBand, Float>> YEAST =
-            m -> { m.put(VatRecipe.BiomeBand.COLD, 1.25F); m.put(VatRecipe.BiomeBand.WARM, 0.75F); m.put(VatRecipe.BiomeBand.HOT, 0.75F); };
-    private static final java.util.function.Consumer<java.util.EnumMap<VatRecipe.BiomeBand, Float>> SALTED =
-            m -> { m.put(VatRecipe.BiomeBand.HOT, 1.5F); };
     public static final int TICKS_PER_SECOND = 20;
 
     private static Map<Item, Item> pickles;
@@ -149,7 +134,7 @@ public final class VatRecipes {
                 || stack.is(ModTags.CROPS_RADISH);
     }
 
-    private static ItemStack convertPickle(ItemStack stack) {
+    static ItemStack convertPickle(ItemStack stack) {
         Item result = pickles().get(stack.getItem());
         if (result != null) {
             return new ItemStack(result);
@@ -211,243 +196,68 @@ public final class VatRecipes {
         return ModItems.SOY_RESIDUE.get();
     }
 
-    private static List<VatRecipe> registry;
-    private static Map<Kind, VatRecipe> byKind;
+    public static List<VatRecipe> all(@Nullable net.minecraft.world.level.Level level) {
+        return level == null ? List.of() : all(level.getRecipeManager());
+    }
 
-    public static List<VatRecipe> all() {
-        if (registry == null) {
-            registry = buildRegistry();
+    public static List<VatRecipe> all(@Nullable net.minecraft.world.item.crafting.RecipeManager manager) {
+        if (manager == null) {
+            return List.of();
         }
-        return registry;
+        List<VatRecipe> recipes = new ArrayList<>();
+        //? if <1.20.5 {
+        for (VatDataRecipe entry : manager.getAllRecipesFor(ModVatRecipes.TYPE.get())) {
+            VatRecipe recipe = entry.rule(entry.getId());
+            if (recipe != null) {
+                recipes.add(recipe);
+            }
+        }
+        //?} else {
+        /*for (var entry : manager.getAllRecipesFor(ModVatRecipes.TYPE.get())) {
+            VatRecipe recipe = entry.value().rule(entry.id());
+            if (recipe != null) {
+                recipes.add(recipe);
+            }
+        }
+        *///?}
+        recipes.sort(java.util.Comparator.comparingInt(VatRecipe::priority).reversed()
+                .thenComparing(VatRecipe::id));
+        return List.copyOf(recipes);
     }
 
     @Nullable
-    public static VatRecipe recipeOf(Kind kind) {
-        if (byKind == null) {
-            Map<Kind, VatRecipe> map = new java.util.EnumMap<>(Kind.class);
-            for (VatRecipe recipe : all()) {
-                map.putIfAbsent(recipe.kind(), recipe);
+    public static VatRecipe recipeOf(Kind kind, @Nullable net.minecraft.world.level.Level level) {
+        for (VatRecipe recipe : all(level)) {
+            if (recipe.kind() == kind) {
+                return recipe;
             }
-            byKind = map;
         }
-        return byKind.get(kind);
+        return null;
     }
 
-    private static Predicate<ItemStack> salt() {
-        return stack -> stack.is(ModTags.FOODS_SALT);
+    @Nullable
+    public static VatRecipe recipeOf(VatBlockEntity vat) {
+        String id = vat.recipeId();
+        if (id != null) {
+            for (VatRecipe recipe : all(vat.getLevel())) {
+                if (id.equals(recipe.id())) {
+                    return recipe;
+                }
+            }
+            return null;
+        }
+        return recipeOf(vat.kind(), vat.getLevel());
     }
 
     public static boolean isSalt(ItemStack stack) {
         return stack.is(ModTags.FOODS_SALT);
     }
 
-    private static Predicate<ItemStack> of(Item item) {
-        return stack -> stack.is(item);
-    }
-
-    private static VatRecipe.Converter pickleConverter() {
-        return VatRecipes::convertPickle;
-    }
-
-    private static VatRecipe.Converter spicyPickleConverter() {
-        return stack -> {
-            if (stack.is(ModTags.CROPS_NAPA_CABBAGE)) {
-                return new ItemStack(spicyCabbage());
-            }
-            return convertPickle(stack);
-        };
-    }
-
-    private static List<VatRecipe> buildRegistry() {
-        List<VatRecipe> list = new ArrayList<>();
-        VatRecipe.Seal press = VatRecipe.Seal.PRESS;
-        VatRecipe.Seal cloth = VatRecipe.Seal.CLOTH;
-        VatRecipe.Seal carpet = VatRecipe.Seal.CARPET;
-
-        list.add(VatRecipe.of(Kind.PICKLE, "pickle")
-                .priority(10).seal(press)
-                .water(1, 3, VatRecipe.LiquidAfter.KEEP)
-                .waterBecomesSourWater()
-                .seconds(PICKLE_SECONDS_PER_LAYER).perLayerSeconds().biomeSeconds(FERMENT)
-                .slot(VatRecipe.Slot.keep(VatRecipes::isPickleIngredient,
-                        VatRecipe.BoundsRule.minWithPerLayerMax(1, VEGETABLES_PER_WATER),
-                        pickleConverter()))
-                .slot(VatRecipe.Slot.absorb(salt(),
-                        VatRecipe.BoundsRule.perLayerExact(SALT_PER_WATER)).seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.SPICY_PICKLE, "spicy_pickle")
-                .priority(20).seal(press)
-                .water(1, 3, VatRecipe.LiquidAfter.KEEP)
-                .waterBecomesSourWater()
-                .seconds(SPICY_PICKLE_SECONDS_PER_LAYER).perLayerSeconds().biomeSeconds(FERMENT)
-                .slot(VatRecipe.Slot.keep(VatRecipes::isPickleIngredient,
-                        VatRecipe.BoundsRule.minWithPerLayerMax(1, VEGETABLES_PER_WATER),
-                        spicyPickleConverter()))
-                .slot(VatRecipe.Slot.absorb(salt(),
-                        VatRecipe.BoundsRule.perLayerExact(SALT_PER_WATER)).seasoning())
-                .slot(VatRecipe.Slot.absorb(of(chiliSauce()), VatRecipe.BoundsRule.exact(SPICY_SAUCE_MAX))
-                        .refund(Items.BOWL).seasoning())
-                .slot(VatRecipe.Slot.absorb(
-                        stack -> stack.is(ModTags.FOODS_FISH_SAUCE) || stack.is(ModTags.FOODS_SHRIMP_PASTE),
-                        VatRecipe.BoundsRule.minByWater(new int[] { 0, 1, 1, 2 }, SPICY_SEASONING_MAX))
-                        .dosed().seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.MEAT, "salted_pork")
-                .priority(10).seal(press)
-                .dry()
-                .seconds(MEAT_SECONDS).biomeSeconds(SALTED)
-                .slot(VatRecipe.Slot.keep(VatRecipes::isMeatInput,
-                        VatRecipe.BoundsRule.between(1, MAX_MEATS), VatRecipe.Converter.to(meatResult())))
-                .slot(VatRecipe.Slot.absorb(salt(),
-                        VatRecipe.BoundsRule.halfOf(0, SALTED_SALT_MAX)).seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.SALTED_FISH, "salted_fish")
-                .priority(10).seal(press)
-                .dry()
-                .seconds(SALTED_FISH_SECONDS).biomeSeconds(SALTED)
-                .slot(VatRecipe.Slot.keep(VatRecipes::isRawFish,
-                        VatRecipe.BoundsRule.exact(SALTED_FISH_FISH),
-                        VatRecipe.Converter.to(saltedFishResult())))
-                .slot(VatRecipe.Slot.absorb(salt(),
-                        VatRecipe.BoundsRule.exact(SALTED_FISH_SALT)).seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.PASTE, "soy_paste")
-                .priority(10).seal(carpet)
-                .water(3, 3, VatRecipe.LiquidAfter.CLEAR)
-                .product(VatRecipe.Fluid.PASTE, PRODUCT_CAPACITY_MB, false)
-                .seconds(PASTE_SECONDS).biomeSeconds(BREW)
-                .slot(VatRecipe.Slot.convert(of(ModItems.SOY_PASTE_CHUNK.get()),
-                        VatRecipe.BoundsRule.exact(PASTE_CHUNKS), residue()))
-                .slot(VatRecipe.Slot.consume(salt(), VatRecipe.BoundsRule.exact(PASTE_SALT))
-                        .seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.SOY_SAUCE, "soy_sauce")
-                .priority(30).seal(carpet)
-                .water(3, 3, VatRecipe.LiquidAfter.CLEAR)
-                .product(VatRecipe.Fluid.SOY_SAUCE, PRODUCT_CAPACITY_MB, false)
-                .seconds(SOY_SAUCE_SECONDS).biomeSeconds(BREW)
-                .slot(VatRecipe.Slot.convert(of(ModItems.SOY_PASTE_CHUNK.get()),
-                        VatRecipe.BoundsRule.exact(PASTE_CHUNKS), residue()))
-                .slot(VatRecipe.Slot.consume(salt(), VatRecipe.BoundsRule.exact(PASTE_SALT))
-                        .seasoning())
-                .slot(VatRecipe.Slot.consume(VatRecipes::isWheat, VatRecipe.BoundsRule.exact(1))
-                        .seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.VINEGAR, "vinegar")
-                .priority(20).seal(cloth)
-                // 一缸水（3 层）出 10 瓶：水位不再分 1~3 档，JEI 也就只有一档
-                .water(3, 3, VatRecipe.LiquidAfter.CLEAR)
-                .product(VatRecipe.Fluid.VINEGAR, PRODUCT_CAPACITY_MB, false)
-                .seconds(VINEGAR_SECONDS).biomeSeconds(BREW)
-                .slot(VatRecipe.Slot.consume(of(residue()), VatRecipe.BoundsRule.exact(RESIDUE_COUNT)))
-                .slot(VatRecipe.Slot.consume(VatRecipes::isVinegarGrain,
-                        VatRecipe.BoundsRule.exact(VINEGAR_GRAIN_COUNT)).seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.WHITE_VINEGAR, "white_vinegar")
-                .priority(20).seal(cloth)
-                .dry()
-                .sourWater(SOUR_WATER_MB, VatRecipe.LiquidAfter.DRAIN_REQUIRED)
-                .product(VatRecipe.Fluid.WHITE_VINEGAR, PRODUCT_CAPACITY_MB, false)
-                .seconds(WHITE_VINEGAR_SECONDS).biomeSeconds(BREW)
-                .slot(VatRecipe.Slot.consume(VatRecipes::isVinegarGrain,
-                        VatRecipe.BoundsRule.exact(VINEGAR_GRAIN_COUNT)).seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.FISH_SAUCE, "fish_sauce")
-                .priority(40).seal(press)
-                .dry()
-                .product(VatRecipe.Fluid.FISH_SAUCE, FISH_SAUCE_SERVINGS * SERVING_MB, false)
-                .seconds(FISH_SAUCE_SECONDS).biomeSeconds(BREW)
-                .slot(VatRecipe.Slot.consume(VatRecipes::isRawFish,
-                        VatRecipe.BoundsRule.exact(FISH_SAUCE_FISH)))
-                .slot(VatRecipe.Slot.consume(salt(), VatRecipe.BoundsRule.exact(FISH_SAUCE_SALT))
-                        .seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.SHRIMP_PASTE, "shrimp_paste")
-                .priority(40).seal(press)
-                .dry()
-                .product(VatRecipe.Fluid.SHRIMP_PASTE, SHRIMP_PASTE_SERVINGS * SERVING_MB, false)
-                .seconds(SHRIMP_PASTE_SECONDS).biomeSeconds(BREW)
-                .slot(VatRecipe.Slot.consume(VatRecipes::isShrimp,
-                        VatRecipe.BoundsRule.exact(SHRIMP_PASTE_SHRIMP)))
-                .slot(VatRecipe.Slot.consume(salt(), VatRecipe.BoundsRule.exact(SHRIMP_PASTE_SALT))
-                        .seasoning())
-                .build());
-
-        list.add(VatRecipe.of(Kind.BEAN_SPROUTS, "bean_sprouts")
-                .priority(20).seal(cloth)
-                .water(1, 1, VatRecipe.LiquidAfter.CLEAR)
-                .seconds(BEAN_SPROUTS_SECONDS).biomeSeconds(SPROUT)
-                .slot(VatRecipe.Slot.convert(VatRecipes::isSoybean,
-                        VatRecipe.BoundsRule.between(1, SPROUT_SOYBEAN_MAX), beanSprouts()))
-                .build());
-
-        list.add(VatRecipe.of(Kind.SOUR_CORN, "sour_corn")
-                .priority(20).seal(cloth)
-                .water(1, 3, VatRecipe.LiquidAfter.CLEAR)
-                .seconds(SOUR_CORN_SECONDS).biomeSeconds(FERMENT)
-                .slot(VatRecipe.Slot.convert(VatRecipes::isCornKernels,
-                        VatRecipe.BoundsRule.perLayerExact(SOUR_CORN_PER_WATER), sourCornKernels()))
-                .build());
-
-        list.add(VatRecipe.of(Kind.KVASS, "kvass")
-                .priority(20).seal(cloth)
-                .water(KVASS_WATER_LEVEL, KVASS_WATER_LEVEL, VatRecipe.LiquidAfter.CLEAR)
-                .product(VatRecipe.Fluid.KVASS, KVASS_SERVINGS * SERVING_MB, false)
-                .seconds(KVASS_SECONDS).biomeSeconds(YEAST)
-                .slot(VatRecipe.Slot.consume(VatRecipes::isBread, VatRecipe.BoundsRule.exact(KVASS_BREAD)))
-                .build());
-
-        list.add(VatRecipe.of(Kind.FROZEN_PEAR, "frozen_pear")
-                .priority(10).seal(press)
-                .requiresSnowyBiome()
-                .requiredSealItem(stack -> stack.is(Items.SNOW_BLOCK))
-                .dry()
-                .seconds(FROZEN_PEAR_SECONDS)
-                .slot(VatRecipe.Slot.convert(VatRecipes::isPear,
-                        VatRecipe.BoundsRule.between(1, 6), ModItems.FROZEN_PEAR.get()))
-                .build());
-
-        list.sort((a, b) -> Integer.compare(b.priority(), a.priority()));
-        List<VatRecipe> built = List.copyOf(list);
-        selfCheck(built);
-        return built;
-    }
-
-    /**
-     * 注册表建好后跑一遍自检（规则见 {@link VatRecipeValidator}）。
-     *
-     * <p>以后加配方时踩坑（份数算不出来、JEI 一页画不下、两个格子重叠、超过大缸容量…）
-     * 不用等到进游戏试，日志里会直接点名是哪一条配方、哪一格。
-     * 自检本身出错也只是记一条日志 —— 它不该把游戏拦下来。
-     */
-    private static void selfCheck(List<VatRecipe> built) {
-        List<String> problems;
-        try {
-            problems = VatRecipeValidator.check(built);
-        } catch (RuntimeException e) {
-            LOGGER.warn("[大缸配方] 自检没能跑完", e);
-            return;
+    static ItemStack convertSpicyPickle(ItemStack stack) {
+        if (stack.is(ModTags.CROPS_NAPA_CABBAGE)) {
+            return new ItemStack(spicyCabbage());
         }
-        if (problems.isEmpty()) {
-            LOGGER.info("[大缸配方] 自检通过：{} 条配方", built.size());
-            return;
-        }
-        for (String problem : problems) {
-            if (problem.startsWith("WARN")) {
-                LOGGER.warn("[大缸配方] {}", problem);
-            } else {
-                LOGGER.error("[大缸配方] {}", problem);
-            }
-        }
+        return convertPickle(stack);
     }
 
     public static Item vinegarResult() {
@@ -507,12 +317,12 @@ public final class VatRecipes {
     }
 
     @Nullable
-    public static Item resultFor(Kind kind, Item input) {
-        Item found = keepResult(recipeOf(kind), input);
-        if (found != null) {
+    public static Item resultFor(VatBlockEntity vat, Item input) {
+        Item found = keepResult(recipeOf(vat), input);
+        if (found != null || vat.recipeId() != null) {
             return found;
         }
-        for (VatRecipe other : all()) {
+        for (VatRecipe other : all(vat.getLevel())) {
             found = keepResult(other, input);
             if (found != null) {
                 return found;
@@ -562,14 +372,37 @@ public final class VatRecipes {
     }
 
     @Nullable
-    public static VatRecipe.Fluid productOf(Kind kind) {
-        VatRecipe recipe = recipeOf(kind);
-        return recipe == null ? null : recipe.liquid().product();
+    public static VatRecipe.Fluid productOf(VatBlockEntity vat) {
+        VatRecipe.Fluid brewed = vat.brewedProduct();
+        if (brewed != null && vat.productMb(brewed) > 0) {
+            return brewed;
+        }
+        VatRecipe recipe = recipeOf(vat);
+        if (recipe != null && vat.recipeId() != null) {
+            return recipe.liquid().product();
+        }
+        if (brewed != null) {
+            return brewed;
+        }
+        if (recipe != null) {
+            return recipe.liquid().product();
+        }
+        return switch (vat.kind()) {
+            case PASTE -> VatRecipe.Fluid.PASTE;
+            case SOY_SAUCE -> VatRecipe.Fluid.SOY_SAUCE;
+            case VINEGAR -> VatRecipe.Fluid.VINEGAR;
+            case WHITE_VINEGAR -> VatRecipe.Fluid.WHITE_VINEGAR;
+            case FISH_SAUCE -> VatRecipe.Fluid.FISH_SAUCE;
+            case SHRIMP_PASTE -> VatRecipe.Fluid.SHRIMP_PASTE;
+            case KVASS -> VatRecipe.Fluid.KVASS;
+            case PICKLE, SPICY_PICKLE -> VatRecipe.Fluid.SOUR_WATER;
+            default -> null;
+        };
     }
 
     @Nullable
-    public static Item bottleFor(Kind kind) {
-        VatRecipe.Fluid fluid = productOf(kind);
+    public static Item bottleFor(VatBlockEntity vat) {
+        VatRecipe.Fluid fluid = productOf(vat);
         Serving serving = fluid == null ? null : servingOf(fluid);
         return serving == null ? null : serving.item();
     }

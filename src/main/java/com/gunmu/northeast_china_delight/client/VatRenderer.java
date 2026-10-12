@@ -2,6 +2,7 @@ package com.gunmu.northeast_china_delight.client;
 
 import com.gunmu.northeast_china_delight.block.Vat;
 import com.gunmu.northeast_china_delight.block.VatBlockEntity;
+import com.gunmu.northeast_china_delight.crafting.VatRecipe;
 import com.gunmu.northeast_china_delight.crafting.VatRecipes;
 import com.gunmu.northeast_china_delight.item.ModItems;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -114,7 +115,7 @@ public class VatRenderer implements BlockEntityRenderer<VatBlockEntity> {
             }
             ItemStack display = content;
             if (done) {
-                Item result = VatRecipes.resultFor(vat.kind(), content.getItem());
+                Item result = VatRecipes.resultFor(vat, content.getItem());
                 if (result != null) {
                     display = new ItemStack(result);
                 }
@@ -181,7 +182,8 @@ public class VatRenderer implements BlockEntityRenderer<VatBlockEntity> {
 
     private static Liquid liquidOf(VatBlockEntity vat) {
         float cap = VatRecipes.PRODUCT_CAPACITY_MB;
-        return switch (vat.kind()) {
+        VatRecipe.Fluid product = VatRecipes.productOf(vat);
+        return switch (product == null ? VatRecipe.Fluid.WATER : product) {
             case PASTE -> vat.pasteMb() > 0
                     ? new Liquid(Blocks.BROWN_CONCRETE.defaultBlockState(), vat.pasteMb() / cap) : null;
             case SOY_SAUCE -> vat.soySauceMb() > 0

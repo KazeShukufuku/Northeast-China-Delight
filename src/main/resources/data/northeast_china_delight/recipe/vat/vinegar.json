@@ -1,0 +1,44 @@
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "VINEGAR",
+    "priority": 20,
+    "seal": "CLOTH",
+    "seconds": 240,
+    "liquid": {
+      "water_min": 3,
+      "water_max": 3,
+      "water_after": "CLEAR",
+      "product": "VINEGAR",
+      "product_mb": 2500
+    },
+    "slots": [
+      {
+        "ingredient": {
+          "item": "northeast_china_delight:soy_residue"
+        },
+        "fate": "CONSUME",
+        "bounds": {
+          "type": "exact",
+          "count": 3
+        }
+      },
+      {
+        "ingredient": {
+          "matcher": "vinegar_grain"
+        },
+        "fate": "CONSUME",
+        "bounds": {
+          "type": "exact",
+          "count": 3
+        },
+        "layer": "SEASONING"
+      }
+    ],
+    "biome_seconds": {
+      "COLD": 1.25,
+      "WARM": 0.5,
+      "HOT": 0.5
+    }
+  }
+}

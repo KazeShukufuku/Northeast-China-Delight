@@ -332,7 +332,8 @@ ext.portLegacyDataTree = { File resourcesDir ->
             return
         }
 
-        def env = [changed: false, recipe: newRel.contains('/recipes/'), advancement: newRel.contains('/advancements/')]
+        def env = [changed: false, recipe: newRel.contains('/recipes/') && !newRel.contains('/recipes/vat/'),
+                   advancement: newRel.contains('/advancements/')]
         if (rel.endsWith('.json')) {
             def root = slurper.parse(src, 'UTF-8')
             def rewritten = legacyTransformNode(root, env)

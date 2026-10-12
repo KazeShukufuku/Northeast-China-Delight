@@ -1,0 +1,48 @@
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "PICKLE",
+    "priority": 10,
+    "seal": "PRESS",
+    "seconds": 60,
+    "liquid": {
+      "water_min": 1,
+      "water_max": 3,
+      "water_after": "CLEAR",
+      "product": "SOUR_WATER",
+      "product_mb": 1000,
+      "product_per_layer": true
+    },
+    "slots": [
+      {
+        "ingredient": {
+          "matcher": "pickle_ingredient"
+        },
+        "fate": "KEEP",
+        "bounds": {
+          "type": "min_with_per_layer_max",
+          "min": 1,
+          "max_per_layer": 2
+        },
+        "converter": "pickle"
+      },
+      {
+        "ingredient": {
+          "tag": "c:foods/seasonings/salt"
+        },
+        "fate": "ABSORB",
+        "bounds": {
+          "type": "per_layer_exact",
+          "count": 1
+        },
+        "layer": "SEASONING"
+      }
+    ],
+    "seconds_per_layer": true,
+    "biome_seconds": {
+      "COLD": 1.5,
+      "WARM": 0.5,
+      "HOT": 0.25
+    }
+  }
+}
