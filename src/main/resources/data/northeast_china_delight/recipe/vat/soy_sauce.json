@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "SOY_SAUCE",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.brewing"
+    },
     "priority": 30,
     "seal": "CARPET",
     "seconds": 300,

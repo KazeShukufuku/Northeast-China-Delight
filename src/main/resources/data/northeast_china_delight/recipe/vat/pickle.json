@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "PICKLE",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.curing"
+    },
     "priority": 10,
     "seal": "PRESS",
     "seconds": 60,

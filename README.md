@@ -63,6 +63,54 @@ main 分支为 1.21.1（NeoForge）开发主线；1.20.1（Forge）版本线见 
 
 修改现有配方时复制模组自带的 JSON 再编辑 `config`；本模组默认有 14 条大缸配方。1.20.1 数据包中的通用标签使用 `forge:`，1.21.1 使用 `c:`。
 
+下面以豆芽为例展示完整格式（工序动词直接写文字，其他规则与默认配方一致）：
+
+```json
+{
+  "type": "northeast_china_delight:vat",
+  "config": {
+    "kind": "BEAN_SPROUTS",
+    "verb": "发芽",
+    "priority": 20,
+    "seal": "CLOTH",
+    "seconds": 30,
+    "liquid": {
+      "water_min": 1,
+      "water_max": 1,
+      "water_after": "CLEAR"
+    },
+    "slots": [
+      {
+        "ingredient": {"matcher": "soybean"},
+        "fate": "CONVERT",
+        "bounds": {"type": "between", "min": 1, "max": 2},
+        "result": "northeast_china_delight:bean_sprouts"
+      }
+    ],
+    "biome_seconds": {"COLD": 1.5, "HOT": 0.75}
+  }
+}
+```
+
+`config` 中的主要字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| `kind` | 使用已有加工类型，如 `BEAN_SPROUTS`、`PICKLE`、`KVASS`；不是配方 ID，也不能任意新增类型名称 |
+| `verb` | 可选工序动词，用于右键进度、Jade 和 JEI；未填写时按 `kind` 使用默认动词 |
+| `priority` | 可选匹配优先级，默认 `0`，越大越优先 |
+| `seal` | 封口要求：`NONE`、`PRESS`、`CLOTH` 或 `CARPET`；示例的 `CLOTH` 使用 `farmersdelight:canvas_rug` |
+| `seconds` | 基础加工时长，单位为秒 |
+| `liquid` | 清水要求及加工后处理；`water_min`、`water_max` 是 `0–3` 层水位，每层 `1000 mB`，不是直接填写毫桶数；`water_after=CLEAR` 表示完成后清掉原来的清水 |
+| `slots` | 1–12 个投料条目；`ingredient` 支持 `item`、`tag`、内置 `matcher` 或任选数组；示例的 `bounds` 允许 1–2 份大豆，`CONVERT` 将每份原料转为 `result` 指定的豆芽 |
+| `biome_seconds` | 可选群系时长倍率；示例在冷群系乘 `1.5`，热群系乘 `0.75`，未指定的气候类型乘 `1` |
+
+`verb` 还支持 `{"text":"催芽"}` 或 `{"translate":"example.process.sprouting"}`；翻译键需在客户端语言资源中定义，直接写文字则不需要额外资源。液体成品写在 `liquid.product`（已有液体类型，如 `KVASS`）和 `liquid.product_mb` 中，产量单位为 `mB`；`product_per_layer=true` 时，`product_mb` 表示每层清水的产量。固体处理和复杂数量规则请以对应的内置配方为基础修改，不要仅修改 `kind` 来决定产物。
+
+完成后先移除封口物，固体成品可空手取出；大酱（`PASTE`）用碗，其他大缸液体用玻璃瓶，每份 `250 mB`。取货容器由成品类型决定，没有独立的容器字段；JEI 会显示取货方式及对应容器，容器不算加工原料。固液混合配方可分别取货，取走固体不会清掉剩余液体。
+
+新增配方使用不同文件名或命名空间即可获得新 ID，例如 `data/example/recipe/vat/bean_sprouts.json`（1.20.1 使用 `recipes/`）。配方应作为世界数据包加载，而不是客户端资源包；执行 `/reload` 后重新加载规则并刷新 JEI 页面。
+
 ## 烤架配方数据包
 
 烤架使用 `northeast_china_delight:grill` 配方类型，默认四条配方 ID 为 `northeast_china_delight:grill/grilled_chicken_frame`、`grill/grilled_corn`、`grill/grilled_oil_edge`、`grill/grilled_cold_noodles`（后三条同样使用本模组命名空间）。覆盖烤冷面时，1.21.1 文件路径为 `data/northeast_china_delight/recipe/grill/grilled_cold_noodles.json`，1.20.1 为 `data/northeast_china_delight/recipes/grill/grilled_cold_noodles.json`。禁用示例：

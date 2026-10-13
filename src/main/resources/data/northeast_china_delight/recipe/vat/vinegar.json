@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "VINEGAR",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.brewing"
+    },
     "priority": 20,
     "seal": "CLOTH",
     "seconds": 240,

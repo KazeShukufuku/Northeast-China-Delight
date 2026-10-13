@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "FISH_SAUCE",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.fermenting"
+    },
     "priority": 40,
     "seal": "PRESS",
     "seconds": 240,

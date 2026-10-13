@@ -94,6 +94,9 @@ public final class VatBrewing {
                     ? recipe.id().equals(vat.recipeId()) : recipe.kind() == vat.kind())) {
                 continue;
             }
+            if (vat.isFermented() && !continuationFits(vat, recipe, now)) {
+                continue;
+            }
             if (processing && (vat.recipeId() != null
                     ? !recipe.id().equals(vat.recipeId()) : recipe.kind() != vat.kind())) {
                 continue;
@@ -106,6 +109,57 @@ public final class VatBrewing {
         }
         return best;
     }
+
+    /**
+     * 完成的缸能否再倒清水。不看上一条是什么，只看有没有另一条配方接得住现在的剩料，并且还要更多水。
+     */
+    public static boolean canContinueWithWater(VatBlockEntity vat) {
+        if (!vat.isFermented() || vat.hasMissingUnfinishedRecipe()
+                || hasBottledProduct(vat) || vat.sourWaterMb() > 0) {
+            return false;
+        }
+        VatRecipe.Counts now = counts(vat, null);
+        for (VatRecipe recipe : VatRecipes.all(vat.getLevel())) {
+            if (isCurrent(vat, recipe) || recipe.liquid().waterMax() <= now.water()
+                    || !recipe.canStillMatch(now.water(), 0) || !continuationFits(vat, recipe, now)) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isCurrent(VatBlockEntity vat, VatRecipe recipe) {
+        return vat.recipeId() != null
+                ? recipe.id().equals(vat.recipeId()) : recipe.kind() == vat.kind();
+    }
+
+    /** 缸里现有的固体或酸引水，都能被这条配方当作原料，且没有超出数量上限。 */
+    private static boolean continuationFits(VatBlockEntity vat, VatRecipe recipe, VatRecipe.Counts counts) {
+        boolean matched = vat.sourWaterMb() > 0 && recipe.liquid().sourWaterMb() > 0;
+        for (ItemStack content : vat.contentSnapshot()) {
+            if (!fitsExisting(recipe, content, counts)) {
+                return false;
+            }
+            matched = true;
+        }
+        return matched;
+    }
+
+    private static boolean fitsExisting(VatRecipe recipe, ItemStack content, VatRecipe.Counts counts) {
+        for (int i = 0; i < recipe.slots().size(); i++) {
+            VatRecipe.Slot slot = recipe.slots().get(i);
+            if (!slot.matcher().test(content)) {
+                continue;
+            }
+            int have = counts.count(slot.matcher());
+            if (have > 0 && have <= recipe.boundsOf(i, counts).max()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Nullable
     public static VatRecipe ready(VatBlockEntity vat) {
         if (vat.hasMissingUnfinishedRecipe()) {
@@ -119,6 +173,9 @@ public final class VatBrewing {
             if (vat.recipeId() != null && !vat.isFermented()
                     && vat.getBlockState().getValue(com.gunmu.northeast_china_delight.block.Vat.PROGRESS) > 0
                     && !recipe.id().equals(vat.recipeId())) {
+                continue;
+            }
+            if (vat.isFermented() && (isCurrent(vat, recipe) || !continuationFits(vat, recipe, counts))) {
                 continue;
             }
             if (!recipe.materialsReady(counts, sour) || !sealMatches(vat, recipe)) {
@@ -188,6 +245,9 @@ public final class VatBrewing {
         for (VatRecipe recipe : VatRecipes.all(vat.getLevel())) {
             if (!acceptsSeal(recipe, stack) || !recipe.ingredientsReady(counts)
                     || !recipe.canStillMatch(counts.water(), sour)) {
+                continue;
+            }
+            if (vat.isFermented() && (isCurrent(vat, recipe) || !continuationFits(vat, recipe, counts))) {
                 continue;
             }
             if (recipe.requiresSnowyBiome() && !isSnowyBiome(vat)) {

@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "SHRIMP_PASTE",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.fermenting"
+    },
     "priority": 40,
     "seal": "PRESS",
     "seconds": 240,

@@ -2,6 +2,7 @@ package com.gunmu.northeast_china_delight.compat.jei;
 
 import com.gunmu.northeast_china_delight.NortheastChinaDelight;
 import com.gunmu.northeast_china_delight.block.ModBlocks;
+import com.gunmu.northeast_china_delight.crafting.VatRecipes;
 import com.gunmu.northeast_china_delight.item.ModItems;
 import com.gunmu.northeast_china_delight.util.DdIds;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -65,7 +66,8 @@ import java.util.List;
 public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
 
     public static final int WIDTH = 138;
-    public static final int HEIGHT = 92;
+    private static final int CONTENT_HEIGHT = 92;
+    public static final int HEIGHT = CONTENT_HEIGHT + 20;
 
     private static final int SLOT = 16;
     private static final int ROW_STEP = 18;
@@ -102,6 +104,7 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
     private static final int OUTPUT_ITEM_Y = CENTER_Y - 17;
     private static final int OUTPUT_FLUID_Y = CENTER_Y + 1;
     private static final int OUTPUT_ONLY_Y = CENTER_Y - SLOT / 2;
+    private static final int COLLECTION_Y = CONTENT_HEIGHT + 2;
 
     private static final int TIME_Y = 70;
     private static final int TIME_COLOR = 0xFF3F3F3F;
@@ -120,6 +123,7 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
     private static final String SLOT_LIQUID = "liquid";
     private static final String SLOT_RESULT = "result";
     private static final String SLOT_RESULT_FLUID = "result_fluid";
+    private static final String SLOT_COLLECTION_CONTAINER = "collection_container";
 
     private static final String[] SEASONING_SLOTS =
             { SLOT_SEASONING_0, SLOT_SEASONING_1, SLOT_SEASONING_2, SLOT_SEASONING_3 };
@@ -221,7 +225,7 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
             return 0;
         }
         int total = rows * SLOT + (rows - 1) * (ROW_STEP - SLOT);
-        return (HEIGHT - total) / 2;
+        return (CONTENT_HEIGHT - total) / 2;
     }
 
     /**
@@ -286,7 +290,9 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
             withSlotBackground(builder.addSlot(RecipeIngredientRole.OUTPUT, OUTPUT_X,
                             hasResultFluid ? OUTPUT_ITEM_Y : OUTPUT_ONLY_Y)
                     .addItemStacks(state.results())
-                    .setSlotName(SLOT_RESULT), this.guiHelper);
+                    .setSlotName(SLOT_RESULT)
+                    .addTooltipCallback((slotView, tooltip) -> tooltip.add(Component.translatable(
+                            "jei.northeast_china_delight.vat.collection.empty_hand_tip"))), this.guiHelper);
         }
         if (hasResultFluid) {
             withSlotBackground(builder.addSlot(RecipeIngredientRole.OUTPUT, OUTPUT_X,
@@ -294,6 +300,14 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
                     .addFluidStack(state.resultFluid(), state.resultFluidMb())
                     .setFluidRenderer(state.resultFluidCapacityMb(), false, SLOT, SLOT)
                     .setSlotName(SLOT_RESULT_FLUID), this.guiHelper);
+        }
+        if (!state.collectionContainers().isEmpty()) {
+            withSlotBackground(builder.addSlot(RecipeIngredientRole.RENDER_ONLY, OUTPUT_X, COLLECTION_Y)
+                    .addItemStacks(state.collectionContainers())
+                    .setSlotName(SLOT_COLLECTION_CONTAINER)
+                    .addTooltipCallback((slotView, tooltip) -> tooltip.add(Component.translatable(
+                            "jei.northeast_china_delight.vat.collection.container_tip", VatRecipes.SERVING_MB))),
+                    this.guiHelper);
         }
     }
 
@@ -354,20 +368,16 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
         this.arrow.draw(graphics, ARROW_X, ARROW_Y);
 
         // 发酵时长写在箭头下方
-        Component text = timeText(state.seconds());
+        drawProcessTime(graphics, state, this.arrow.getWidth());
         Font font = Minecraft.getInstance().font;
-        int x = ARROW_X + (this.arrow.getWidth() - font.width(text)) / 2;
-        if (x + font.width(text) > TIME_MAX_RIGHT) {
-            x = TIME_MAX_RIGHT - font.width(text);
-        }
-        graphics.drawString(font, text, x, TIME_Y, TIME_COLOR, false);
 
         // 额外条件注记（"要在会下雪的群系里酿"），小一号字写在时长下面
         Component note = state.note();
         if (note != null) {
             int noteX = (WIDTH - font.width(note)) / 2;
-            graphics.drawString(font, note, noteX, HEIGHT - 10, 0xFF666666, false);
+            graphics.drawString(font, note, noteX, CONTENT_HEIGHT - 10, 0xFF666666, false);
         }
+        drawCollectionInfo(graphics, state);
     }*/
     //?}
 
@@ -434,19 +444,15 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
             }
             this.arrow.draw(graphics, ARROW_X, ARROW_Y);
 
-            Component text = timeText(state.seconds());
+            drawProcessTime(graphics, state, this.arrow.getWidth());
             Font font = Minecraft.getInstance().font;
-            int x = ARROW_X + (this.arrow.getWidth() - font.width(text)) / 2;
-            if (x + font.width(text) > TIME_MAX_RIGHT) {
-                x = TIME_MAX_RIGHT - font.width(text);
-            }
-            graphics.drawString(font, text, x, TIME_Y, TIME_COLOR, false);
 
             Component note = state.note();
             if (note != null) {
                 int noteX = (WIDTH - font.width(note)) / 2;
-                graphics.drawString(font, note, noteX, HEIGHT - 10, 0xFF666666, false);
+                graphics.drawString(font, note, noteX, CONTENT_HEIGHT - 10, 0xFF666666, false);
             }
+            drawCollectionInfo(graphics, state);
         }
 
         private void apply(VatJeiRecipe.State state) {
@@ -530,6 +536,44 @@ public class VatRecipeCategory implements IRecipeCategory<VatJeiRecipe> {
         }
     }
     //?}
+
+    private static void drawProcessTime(GuiGraphics graphics, VatJeiRecipe.State state, int arrowWidth) {
+        Component text = Component.translatable("jei.northeast_china_delight.vat.process_time",
+                state.verb(), timeText(state.seconds()));
+        Font font = Minecraft.getInstance().font;
+        int width = font.width(text);
+        float scale = Math.min(1.0F, (TIME_MAX_RIGHT - VAT_X) / (float) Math.max(1, width));
+        float scaledWidth = width * scale;
+        float position = Math.min(ARROW_X + (arrowWidth - scaledWidth) / 2.0F,
+                TIME_MAX_RIGHT - scaledWidth);
+        PoseStack pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(position, TIME_Y, 0);
+        pose.scale(scale, scale, 1.0F);
+        graphics.drawString(font, text, 0, 0, TIME_COLOR, false);
+        pose.popPose();
+    }
+
+    private static void drawCollectionInfo(GuiGraphics graphics, VatJeiRecipe.State state) {
+        if (!state.hasResultItem() && !state.hasResultFluid()) {
+            return;
+        }
+        String key = state.hasResultFluid()
+                ? state.hasResultItem() ? "mixed" : "container"
+                : "empty_hand";
+        Component text = Component.translatable("jei.northeast_china_delight.vat.collection." + key);
+        Font font = Minecraft.getInstance().font;
+        int maximumWidth = state.collectionContainers().isEmpty() ? WIDTH - 8 : OUTPUT_X - 8;
+        int width = font.width(text);
+        float scale = Math.min(1.0F, maximumWidth / (float) Math.max(1, width));
+        PoseStack pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(4 + (maximumWidth - width * scale) / 2.0F,
+                COLLECTION_Y + (SLOT - font.lineHeight * scale) / 2.0F, 0);
+        pose.scale(scale, scale, 1.0F);
+        graphics.drawString(font, text, 0, 0, TIME_COLOR, false);
+        pose.popPose();
+    }
 
     private static void drawFluidRhombus(GuiGraphics graphics, Fluid fluid, int centerX, int centerY,
                                          int halfWidth, int halfHeight) {

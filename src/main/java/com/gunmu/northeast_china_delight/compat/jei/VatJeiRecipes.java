@@ -101,19 +101,13 @@ public final class VatJeiRecipes {
         Fluid product = fluidOf(liquid.product());
         long productMb = product == null ? 0 : recipe.productMbFor(level);
         List<ItemStack> results = mergeAll(products);
-        if (product == null && results.isEmpty()) {
-            ItemStack bottled = bottledProduct(liquid, level);
-            if (!bottled.isEmpty()) {
-                results = List.of(bottled);
-            }
-        }
 
         return new VatJeiRecipe.State(
                 base, baseMb, Math.max(baseMb, (long) liquid.waterMax() * ONE_LAYER),
                 List.copyOf(seasoning), List.copyOf(primary), sealOf(recipe),
                 results, product, productMb,
                 Math.max(productMb, VatRecipes.PRODUCT_CAPACITY_MB),
-                recipe.secondsFor(level), noteOf(recipe));
+                recipe.secondsFor(level), recipe.verb(), collectionContainersOf(liquid.product()), noteOf(recipe));
     }
 
     @Nullable
@@ -130,21 +124,13 @@ public final class VatJeiRecipes {
             case WHITE_VINEGAR -> ModFluids.WHITE_VINEGAR.get();
             case FISH_SAUCE -> ModFluids.FISH_SAUCE.get();
             case SHRIMP_PASTE -> ModFluids.SHRIMP_PASTE.get();
-            case KVASS -> null;
+            case KVASS -> ModFluids.KVASS.get();
         };
     }
 
-    private static ItemStack bottledProduct(VatRecipe.Liquid liquid, int level) {
-        if (liquid.product() == null) {
-            return ItemStack.EMPTY;
-        }
-        VatRecipes.Serving serving = VatRecipes.servingOf(liquid.product());
-        if (serving == null) {
-            return ItemStack.EMPTY;
-        }
-        int mb = liquid.productPerLayer()
-                ? liquid.productMb() * Math.max(1, level) : liquid.productMb();
-        return new ItemStack(serving.item(), Math.max(1, mb / VatRecipes.SERVING_MB));
+    private static List<ItemStack> collectionContainersOf(@Nullable VatRecipe.Fluid product) {
+        VatRecipes.Serving serving = product == null ? null : VatRecipes.servingOf(product);
+        return serving == null ? List.of() : List.of(new ItemStack(serving.container()));
     }
 
     private static int[] resolveCounts(VatRecipe recipe, List<List<ItemStack>> candidates, int level) {

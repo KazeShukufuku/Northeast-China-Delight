@@ -33,6 +33,8 @@ public record VatJeiRecipe(net.minecraft.resources.ResourceLocation id, List<Sta
             long resultFluidMb,
             long resultFluidCapacityMb,
             int seconds,
+            net.minecraft.network.chat.Component verb,
+            List<ItemStack> collectionContainers,
             @Nullable net.minecraft.network.chat.Component note) {
 
         public boolean hasLiquid() {

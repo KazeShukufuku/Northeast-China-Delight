@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "BEAN_SPROUTS",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.sprouting"
+    },
     "priority": 20,
     "seal": "CLOTH",
     "seconds": 30,

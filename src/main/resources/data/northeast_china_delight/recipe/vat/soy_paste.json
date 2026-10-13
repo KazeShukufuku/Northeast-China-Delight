@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "PASTE",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.fermenting"
+    },
     "priority": 10,
     "seal": "CARPET",
     "seconds": 300,
