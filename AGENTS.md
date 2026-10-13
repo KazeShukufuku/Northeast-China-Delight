@@ -31,3 +31,7 @@
 - 工作进度记进 `docs/1.20.1适配计划.md`。
 - 用户交给的图片只看「是不是与现有素材同一张」（哈希比对即可），不要查看/分析图片内容。
 - 通用配置的说明、默认值和默认允许名单以 `config-templates/northeast_china_delight-common.toml` 的用户确认版本为准；修改时同步 `NortheastChinaConfig.java` 与两版模板，不擅自恢复旧文案。
+
+## README 更新记录
+
+以用户原文为准，只按明确要求修改；不要自拟版本分组或添加细节条目。技术修复、测试与工作过程记入 docs，不自动扩写 README 更新记录。
