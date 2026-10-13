@@ -3,6 +3,7 @@ package com.gunmu.northeast_china_delight.compat.jade;
 import com.gunmu.northeast_china_delight.block.ModBlockStateProperties;
 import com.gunmu.northeast_china_delight.block.Vat;
 import com.gunmu.northeast_china_delight.block.VatBlockEntity;
+import com.gunmu.northeast_china_delight.crafting.VatRecipe;
 import com.gunmu.northeast_china_delight.crafting.VatRecipes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -89,14 +90,20 @@ public enum VatComponentProvider implements IBlockComponentProvider {
                 default -> "fermenting";
             };
             Component text;
+            VatRecipe recipe = VatRecipes.recipeOf(vat);
             if (fermented) {
-                text = Component.translatable("jade.northeast_china_delight.vat.done." + stage);
+                text = recipe == null
+                        ? Component.translatable("jade.northeast_china_delight.vat.done." + stage)
+                        : Component.translatable("jade.northeast_china_delight.vat.done.custom", recipe.verb());
             } else {
                 boolean started = progress > 0 || com.gunmu.northeast_china_delight.crafting.VatBrewing
                         .ready(vat) != null;
                 text = started
-                        ? Component.translatable("jade.northeast_china_delight.vat.progress." + stage,
-                                Math.round(ratio * 100.0F))
+                        ? recipe == null
+                                ? Component.translatable("jade.northeast_china_delight.vat.progress." + stage,
+                                        Math.round(ratio * 100.0F))
+                                : Component.translatable("jade.northeast_china_delight.vat.progress.custom",
+                                        recipe.verb(), Math.round(ratio * 100.0F))
                         : Component.translatable("jade.northeast_china_delight.vat.waiting");
             }
             // 进度条上的文字用白色，避免默认的自动取色在浅色条上看不清

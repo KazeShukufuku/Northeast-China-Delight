@@ -7,6 +7,7 @@ import com.google.gson.JsonParseException;
 import com.gunmu.northeast_china_delight.util.DdIds;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
@@ -35,6 +36,9 @@ public final class VatRecipeJson {
                 .priority(GsonHelper.getAsInt(config, "priority", 0))
                 .seal(enumValue(VatRecipe.Seal.class, GsonHelper.getAsString(config, "seal")))
                 .seconds(GsonHelper.getAsInt(config, "seconds"));
+        if (config.has("verb")) {
+            builder.verb(verb(config.get("verb")));
+        }
         if (GsonHelper.getAsBoolean(config, "seconds_per_layer", false)) {
             builder.perLayerSeconds();
         }
@@ -94,6 +98,29 @@ public final class VatRecipeJson {
             builder.slot(slot(slots.get(index).getAsJsonObject(), index));
         }
         return builder.build();
+    }
+
+    private static Component verb(JsonElement json) {
+        if (json.isJsonPrimitive() && json.getAsJsonPrimitive().isString()) {
+            String text = json.getAsString();
+            if (text.isBlank()) {
+                throw new JsonParseException("大缸工序动词不能为空");
+            }
+            return Component.literal(text);
+        }
+        if (json.isJsonObject()) {
+            JsonObject object = json.getAsJsonObject();
+            if (object.has("text") == object.has("translate")) {
+                throw new JsonParseException("大缸工序动词需提供 text 或 translate，不能同时提供");
+            }
+            boolean translated = object.has("translate");
+            String value = GsonHelper.getAsString(object, translated ? "translate" : "text");
+            if (value.isBlank()) {
+                throw new JsonParseException("大缸工序动词不能为空");
+            }
+            return translated ? Component.translatable(value) : Component.literal(value);
+        }
+        throw new JsonParseException("大缸工序动词需是字符串或 text/translate 对象");
     }
 
     private static VatRecipe.Slot slot(JsonObject json, int index) {

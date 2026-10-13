@@ -19,6 +19,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
@@ -29,6 +30,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonParseException;
 //? if <1.20.2 {
 import net.minecraftforge.gametest.GameTestHolder;
 //?} else {
@@ -62,6 +64,239 @@ public final class VatGameTests {
     }
 
     private static final BlockPos AT = new BlockPos(1, 1, 1);
+
+    @GameTest(template = "empty")
+    public static void vatFinishedBeanSproutsCanBeTakenWithEmptyHand(GameTestHelper helper) {
+        assertFinishedItemCanBeTaken(helper, VatRecipes.Kind.BEAN_SPROUTS, ModItems.BEAN_SPROUTS.get());
+    }
+
+    @GameTest(template = "empty")
+    public static void vatFinishedSourCornCanBeTakenWithEmptyHand(GameTestHelper helper) {
+        assertFinishedItemCanBeTaken(helper, VatRecipes.Kind.SOUR_CORN, ModItems.SOUR_CORN_KERNELS.get());
+    }
+
+    @GameTest(template = "empty")
+    public static void vatFinishedSourCabbageCanBeTakenWithEmptyHand(GameTestHelper helper) {
+        assertFinishedItemCanBeTaken(helper, VatRecipes.Kind.PICKLE, ModItems.SOUR_CABBAGE.get());
+    }
+
+    @GameTest(template = "empty")
+    public static void vatFinishedCoverComesOffBeforeCollecting(GameTestHelper helper) {
+        Item rug = clothRug();
+        if (rug == null) {
+            helper.fail("Missing canvas rug for vat collection test");
+        }
+        VatBlockEntity vat = finishedVat(helper, VatRecipes.Kind.BEAN_SPROUTS);
+        vat.addContent(new ItemStack(ModItems.BEAN_SPROUTS.get()));
+        vat.setCover(new ItemStack(rug));
+        Player player = mockPlayer(helper, GameType.SURVIVAL);
+        click(helper, player, ItemStack.EMPTY);
+        if (vat.isCovered() || player.getInventory().countItem(rug) != 1
+                || vat.countOf(ModItems.BEAN_SPROUTS.get()) != 1) {
+            helper.fail("First finished-vat click should return the rug before collecting food");
+        }
+        click(helper, player, ItemStack.EMPTY);
+        if (vat.countOf(ModItems.BEAN_SPROUTS.get()) != 0
+                || player.getInventory().countItem(ModItems.BEAN_SPROUTS.get()) != 1) {
+            helper.fail("Finished food should be collectible after removing the rug");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatFinishedSoyResidueCanBeTakenBeforeLiquid(GameTestHelper helper) {
+        VatBlockEntity vat = finishedVat(helper, VatRecipes.Kind.PASTE);
+        vat.addContent(new ItemStack(ModItems.SOY_RESIDUE.get()));
+        vat.setProductMb(VatRecipe.Fluid.PASTE, VatRecipes.SERVING_MB);
+        Player player = mockPlayer(helper, GameType.SURVIVAL);
+        click(helper, player, ItemStack.EMPTY);
+        if (vat.countOf(ModItems.SOY_RESIDUE.get()) != 0
+                || player.getInventory().countItem(ModItems.SOY_RESIDUE.get()) != 1
+                || vat.productMb(VatRecipe.Fluid.PASTE) != VatRecipes.SERVING_MB) {
+            helper.fail("Solid residue should be collectible without draining the liquid first");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatFinishedPicklesCanBeTakenBeforeSourWater(GameTestHelper helper) {
+        Item cabbage = ModItems.NAPA_CABBAGE.get();
+        VatBlockEntity vat = finishedVat(helper, VatRecipes.Kind.PICKLE);
+        vat.addContent(new ItemStack(cabbage));
+        vat.setProductMb(VatRecipe.Fluid.SOUR_WATER, VatRecipes.WATER_MB_PER_LEVEL);
+        Player player = mockPlayer(helper, GameType.SURVIVAL);
+        click(helper, player, ItemStack.EMPTY);
+        if (vat.countOf(cabbage) != 0 || player.getInventory().countItem(ModItems.SOUR_CABBAGE.get()) != 1
+                || vat.productMb(VatRecipe.Fluid.SOUR_WATER) != VatRecipes.WATER_MB_PER_LEVEL) {
+            helper.fail("Finished cabbage should convert on collection without losing the sour water");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatFinishedKvassRequiresBottle(GameTestHelper helper) {
+        VatBlockEntity vat = finishedVat(helper, VatRecipes.Kind.KVASS);
+        int amount = VatRecipes.KVASS_SERVINGS * VatRecipes.SERVING_MB;
+        vat.setProductMb(VatRecipe.Fluid.KVASS, amount);
+        Player player = mockPlayer(helper, GameType.SURVIVAL);
+        click(helper, player, ItemStack.EMPTY);
+        click(helper, player, new ItemStack(Items.BOWL));
+        if (vat.productMb(VatRecipe.Fluid.KVASS) != amount) {
+            helper.fail("An empty hand or bowl must not collect kvass");
+        }
+        click(helper, player, new ItemStack(Items.GLASS_BOTTLE));
+        if (player.getInventory().countItem(ModItems.KVASS.get()) != 1
+                || vat.productMb(VatRecipe.Fluid.KVASS) != amount - VatRecipes.SERVING_MB) {
+            helper.fail("A glass bottle should collect exactly one serving of kvass");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatKvassJeiUsesLiquidAndBottle(GameTestHelper helper) {
+        VatRecipe recipe = VatRecipes.recipeOf(VatRecipes.Kind.KVASS, helper.getLevel());
+        VatJeiRecipe.State state = VatJeiRecipes.pagesFor(recipe).get(0).first();
+        if (!state.hasResultFluid() || state.resultFluid() != ModFluids.KVASS.get()
+                || state.resultFluidMb() != recipe.productMbFor(VatRecipes.KVASS_WATER_LEVEL)
+                || state.hasResultItem() || state.collectionContainers().size() != 1
+                || !state.collectionContainers().get(0).is(Items.GLASS_BOTTLE)) {
+            helper.fail("KVASS JEI must show the liquid output and a separate collection bottle");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatJeiCollectionContainersFollowProducts(GameTestHelper helper) {
+        for (VatRecipe recipe : VatRecipes.all(helper.getLevel())) {
+            VatRecipe.Fluid product = recipe.liquid().product();
+            VatRecipes.Serving serving = product == null ? null : VatRecipes.servingOf(product);
+            for (VatJeiRecipe.State state : VatJeiRecipes.pagesFor(recipe).get(0).states()) {
+                if (serving == null && !state.collectionContainers().isEmpty()
+                        || serving != null && (state.collectionContainers().size() != 1
+                        || !state.collectionContainers().get(0).is(serving.container()))) {
+                    helper.fail("JEI collection container differs from gameplay: " + recipe.id());
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatCustomLiteralVerbSurvivesNetworkAndJei(GameTestHelper helper) {
+        for (String value : List.of("\"催芽\"", "{\"text\":\"催芽\"}")) {
+            JsonObject config = verbTestConfig();
+            config.add("verb", JsonParser.parseString(value));
+            VatRecipe recipe = roundTripVerbRecipe(helper, config);
+            if (recipe == null || !recipe.verb().getString().equals("催芽")
+                    || !VatJeiRecipes.pagesFor(recipe).get(0).first().verb().getString().equals("催芽")) {
+                helper.fail("Custom vat verb must survive network sync, ID binding and JEI generation");
+            }
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatCustomTranslatedVerbSurvivesNetworkAndJei(GameTestHelper helper) {
+        JsonObject config = verbTestConfig();
+        String key = "test.vat.custom_verb";
+        JsonObject verb = new JsonObject();
+        verb.addProperty("translate", key);
+        config.add("verb", verb);
+        VatRecipe recipe = roundTripVerbRecipe(helper, config);
+        if (recipe == null || !(recipe.verb().getContents() instanceof TranslatableContents contents)
+                || !contents.getKey().equals(key)
+                || !(VatJeiRecipes.pagesFor(recipe).get(0).first().verb().getContents()
+                instanceof TranslatableContents displayed) || !displayed.getKey().equals(key)) {
+            helper.fail("Translated vat verbs must remain translatable after sync and JEI generation");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatLegacyRecipesGetDefaultVerbs(GameTestHelper helper) {
+        VatRecipe recipe = roundTripVerbRecipe(helper, verbTestConfig());
+        if (recipe == null || !(recipe.verb().getContents() instanceof TranslatableContents contents)
+                || !contents.getKey().equals("process.northeast_china_delight.vat.sprouting")) {
+            helper.fail("Legacy vat recipes without a verb should keep a suitable default action");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void vatInvalidVerbsAreRejected(GameTestHelper helper) {
+        for (String value : List.of("\"\"", "\"   \"", "null", "5", "[]", "{}",
+                "{\"text\":\"x\",\"translate\":\"y\"}", "{\"text\":\"\"}", "{\"translate\":\"\"}")) {
+            JsonObject config = verbTestConfig();
+            config.add("verb", JsonParser.parseString(value));
+            try {
+                com.gunmu.northeast_china_delight.crafting.VatRecipeJson.decode(null, config);
+            } catch (JsonParseException expected) {
+                continue;
+            }
+            helper.fail("Invalid vat verb should be rejected: " + value);
+        }
+        helper.succeed();
+    }
+
+    private static JsonObject verbTestConfig() {
+        return JsonParser.parseString("""
+                {"kind":"BEAN_SPROUTS","seal":"NONE","seconds":30,"liquid":{},
+                 "slots":[{"ingredient":{"item":"minecraft:wheat"},"fate":"CONVERT",
+                   "bounds":{"type":"exact","count":1},"result":"northeast_china_delight:bean_sprouts"}]}
+                """).getAsJsonObject();
+    }
+
+    private static VatRecipe roundTripVerbRecipe(GameTestHelper helper, JsonObject config) {
+        ResourceLocation id = DdIds.of(NortheastChinaDelight.MODID, "vat/verb_sync_test");
+        JsonObject json = new JsonObject();
+        json.addProperty("type", NortheastChinaDelight.MODID + ":vat");
+        json.add("config", config);
+        //? if <1.20.5 {
+        VatDataRecipe source = ModVatRecipes.SERIALIZER.get().fromJson(id, json);
+        net.minecraft.network.FriendlyByteBuf buffer = new net.minecraft.network.FriendlyByteBuf(
+                io.netty.buffer.Unpooled.buffer());
+        try {
+            ModVatRecipes.SERIALIZER.get().toNetwork(buffer, source);
+            return ModVatRecipes.SERIALIZER.get().fromNetwork(id, buffer).rule(id);
+        } finally {
+            buffer.release();
+        }
+        //?} else {
+        /*VatDataRecipe source = ModVatRecipes.SERIALIZER.get().codec().codec()
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow();
+        net.minecraft.network.RegistryFriendlyByteBuf buffer = new net.minecraft.network.RegistryFriendlyByteBuf(
+                io.netty.buffer.Unpooled.buffer(), helper.getLevel().registryAccess());
+        try {
+            ModVatRecipes.SERIALIZER.get().streamCodec().encode(buffer, source);
+            return ModVatRecipes.SERIALIZER.get().streamCodec().decode(buffer).rule(id);
+        } finally {
+            buffer.release();
+        }
+        *///?}
+    }
+
+    private static VatBlockEntity finishedVat(GameTestHelper helper, VatRecipes.Kind kind) {
+        VatRecipe recipe = VatRecipes.recipeOf(kind, helper.getLevel());
+        if (recipe == null) {
+            helper.fail("Missing vat recipe: " + kind);
+        }
+        VatBlockEntity vat = placeVat(helper);
+        vat.setRecipe(recipe);
+        helper.getLevel().setBlock(vat.getBlockPos(), vat.getBlockState().setValue(Vat.FERMENTED, true), 3);
+        return vat;
+    }
+
+    private static void assertFinishedItemCanBeTaken(GameTestHelper helper, VatRecipes.Kind kind, Item product) {
+        VatBlockEntity vat = finishedVat(helper, kind);
+        vat.addContent(new ItemStack(product));
+        Player player = mockPlayer(helper, GameType.SURVIVAL);
+        click(helper, player, ItemStack.EMPTY);
+        if (vat.countOf(product) != 0 || player.getInventory().countItem(product) != 1) {
+            helper.fail("Empty-hand right-click must collect finished " + BuiltInRegistries.ITEM.getKey(product)
+                    + " rather than report progress");
+        }
+        helper.succeed();
+    }
 
     @GameTest(template = "empty")
     public static void vatPicklesProduceThreeBucketsOfSourWater(GameTestHelper helper) {
@@ -377,6 +612,71 @@ public final class VatGameTests {
         }
         assertScheduled(helper, level, pos);
         helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void soySauceResidueStaysForNextRecipe(GameTestHelper helper) {
+        Player player = mockPlayer(helper, GameType.CREATIVE);
+        VatBlockEntity vat = placeVat(helper);
+        ServerLevel level = helper.getLevel();
+        BlockPos pos = helper.absolutePos(AT);
+        finishSoySauce(helper, level, pos, vat);
+        vat.takeCover();
+
+        click(helper, player, new ItemStack(Items.WATER_BUCKET));
+        if (vat.waterLayers() != 0 || vat.soySauceMb() == 0 || vat.residueCount() != VatRecipes.RESIDUE_COUNT) {
+            helper.fail("酱油没取完时不应续水，也不应拿走酱渣");
+        }
+        vat.setProductMb(VatRecipe.Fluid.SOY_SAUCE, VatRecipes.SERVING_MB);
+        click(helper, player, new ItemStack(Items.GLASS_BOTTLE));
+        click(helper, player, new ItemStack(Items.GLASS_BOTTLE));
+        click(helper, player, new ItemStack(Items.DIRT));
+        if (vat.soySauceMb() != 0 || vat.residueCount() != VatRecipes.RESIDUE_COUNT) {
+            helper.fail("酱油取完后，玻璃瓶或无关物品右键不应拿走酱渣");
+        }
+
+        click(helper, player, ItemStack.EMPTY);
+        if (vat.residueCount() != VatRecipes.RESIDUE_COUNT - 1) {
+            helper.fail("空手仍应能逐份取出酱渣");
+        }
+        vat.addContent(new ItemStack(ModItems.SOY_RESIDUE.get()));
+        for (int i = 0; i < 3; i++) {
+            click(helper, player, new ItemStack(Items.WATER_BUCKET));
+        }
+        for (int i = 0; i < VatRecipes.VINEGAR_GRAIN_COUNT; i++) {
+            click(helper, player, new ItemStack(ModItems.CORN_SEEDS.get()));
+        }
+        Item cloth = clothRug();
+        if (cloth == null) {
+            helper.succeed();
+            return;
+        }
+        click(helper, player, new ItemStack(cloth));
+        VatRecipe vinegar = VatBrewing.ready(vat);
+        if (vat.residueCount() != VatRecipes.RESIDUE_COUNT || !vat.isCovered()
+                || vinegar == null || vinegar.kind() != VatRecipes.Kind.VINEGAR
+                || vat.kind() != VatRecipes.Kind.VINEGAR) {
+            helper.fail("酱渣留在缸里时，加水、加谷物并盖粗布毯后应开始酿醋");
+        }
+        assertScheduled(helper, level, pos);
+        helper.succeed();
+    }
+
+    private static void finishSoySauce(GameTestHelper helper, ServerLevel level, BlockPos pos, VatBlockEntity vat) {
+        vat.addWater(3 * VatRecipes.WATER_MB_PER_LEVEL);
+        for (int i = 0; i < VatRecipes.PASTE_CHUNKS; i++) {
+            vat.addContent(new ItemStack(ModItems.SOY_PASTE_CHUNK.get()));
+        }
+        for (int i = 0; i < VatRecipes.PASTE_SALT; i++) {
+            vat.addContent(new ItemStack(ModItems.SALT.get()));
+        }
+        vat.addContent(new ItemStack(Items.WHEAT));
+        vat.setKind(VatRecipes.Kind.SOY_SAUCE);
+        vat.setCover(new ItemStack(Items.WHITE_CARPET));
+        VatBrewing.complete(level, pos, vat, VatRecipes.recipeOf(VatRecipes.Kind.SOY_SAUCE, level));
+        if (vat.residueCount() != VatRecipes.RESIDUE_COUNT || vat.soySauceMb() <= 0) {
+            helper.fail("酱油完成状态不对");
+        }
     }
 
     @GameTest(template = "empty")

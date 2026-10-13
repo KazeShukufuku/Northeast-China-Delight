@@ -1,5 +1,6 @@
 package com.gunmu.northeast_china_delight.crafting;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -247,6 +248,7 @@ public final class VatRecipe {
     private final Liquid liquid;
     private final List<Slot> slots;
     private final int seconds;
+    private final Component verb;
     private final boolean secondsPerLayer;
     private final boolean requiresSnowyBiome;
     @Nullable
@@ -255,7 +257,7 @@ public final class VatRecipe {
     private final java.util.EnumMap<BiomeBand, Float> biomeSecondsMultiplier;
 
     private VatRecipe(String id, VatRecipes.Kind kind, int priority, Seal seal, Liquid liquid, List<Slot> slots,
-                      int seconds, boolean secondsPerLayer, boolean requiresSnowyBiome,
+                      int seconds, @Nullable Component verb, boolean secondsPerLayer, boolean requiresSnowyBiome,
                       @Nullable java.util.function.Predicate<ItemStack> requiredSealItem,
                       @Nullable java.util.EnumMap<BiomeBand, Float> biomeSecondsMultiplier) {
         this.id = id;
@@ -265,6 +267,7 @@ public final class VatRecipe {
         this.liquid = liquid;
         this.slots = List.copyOf(slots);
         this.seconds = seconds;
+        this.verb = verb == null ? defaultVerb(kind) : verb.copy();
         this.secondsPerLayer = secondsPerLayer;
         this.requiresSnowyBiome = requiresSnowyBiome;
         this.requiredSealItem = requiredSealItem;
@@ -301,7 +304,7 @@ public final class VatRecipe {
 
     public VatRecipe withId(String id) {
         return new VatRecipe(id, this.kind, this.priority, this.seal, this.liquid, this.slots,
-                this.seconds, this.secondsPerLayer, this.requiresSnowyBiome,
+                this.seconds, this.verb, this.secondsPerLayer, this.requiresSnowyBiome,
                 this.requiredSealItem, this.biomeSecondsMultiplier);
     }
 
@@ -327,6 +330,21 @@ public final class VatRecipe {
 
     public int seconds() {
         return this.seconds;
+    }
+
+    public Component verb() {
+        return this.verb.copy();
+    }
+
+    private static Component defaultVerb(VatRecipes.Kind kind) {
+        String action = switch (kind) {
+            case PICKLE, SPICY_PICKLE, MEAT, SALTED_FISH -> "curing";
+            case SOY_SAUCE, VINEGAR, WHITE_VINEGAR, KVASS -> "brewing";
+            case BEAN_SPROUTS -> "sprouting";
+            case FROZEN_PEAR -> "freezing";
+            default -> "fermenting";
+        };
+        return Component.translatable("process.northeast_china_delight.vat." + action);
     }
 
     public boolean secondsPerLayer() {
@@ -534,6 +552,7 @@ public final class VatRecipe {
         private Liquid liquid = Liquid.NONE;
         private final List<Slot> slots = new ArrayList<>();
         private int seconds = 2;
+        private Component verb;
         private boolean secondsPerLayer;
         private boolean requiresSnowyBiome;
         private java.util.function.Predicate<ItemStack> requiredSealItem;
@@ -605,6 +624,11 @@ public final class VatRecipe {
             return this;
         }
 
+        public Builder verb(Component verb) {
+            this.verb = verb.copy();
+            return this;
+        }
+
         public Builder perLayerSeconds() {
             this.secondsPerLayer = true;
             return this;
@@ -635,7 +659,7 @@ public final class VatRecipe {
 
         public VatRecipe build() {
             return new VatRecipe(this.id, this.kind, this.priority, this.seal, this.liquid,
-                    this.slots, this.seconds, this.secondsPerLayer, this.requiresSnowyBiome,
+                    this.slots, this.seconds, this.verb, this.secondsPerLayer, this.requiresSnowyBiome,
                     this.requiredSealItem, this.biomeSecondsMultiplier);
         }
     }

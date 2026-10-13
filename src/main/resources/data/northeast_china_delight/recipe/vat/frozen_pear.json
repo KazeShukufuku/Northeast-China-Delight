@@ -2,6 +2,9 @@
   "type": "northeast_china_delight:vat",
   "config": {
     "kind": "FROZEN_PEAR",
+    "verb": {
+      "translate": "process.northeast_china_delight.vat.freezing"
+    },
     "priority": 10,
     "seal": "PRESS",
     "seconds": 30,
