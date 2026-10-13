@@ -4,7 +4,7 @@ main 分支为 1.21.1（NeoForge）开发主线；1.20.1（Forge）版本线见 
 
 ## 当前最新版本
 
-**2.9.4**
+**3.0.0**
 
 - Minecraft 1.21.1：NeoForge 21.1
 
@@ -12,17 +12,21 @@ main 分支为 1.21.1（NeoForge）开发主线；1.20.1（Forge）版本线见 
 
 ## 更新记录
 
-**2.9.4**
+**3.0.0**
 
-- 大缸配方改为带稳定 ID 的数据包配方，支持覆盖或禁用单条配方
-- 修复酱渣复酿时的封缸问题，统一醋和白醋的原料液体用量
-- 合并 JEI 中重复的原料选项，并修复泡菜产酸引水的容量校验
+- 优化部分物品与状态效果的贴图
+- 调料瓶的提示信息中只显示余量
+- 修复部分大缸配方的问题，统一部分配方的原料与产物的液体量
+- 优化配方的 JEI 显示，合并重复的原料选项
 - 为盆装菜统一更换新的大盆外观，并优化其视觉效果
 - 破坏非完整状态的盆装菜，不再直接掉落完整的盆装菜掉落物
 - 盆装菜方块被装完后不立刻掉落，而会变为大脸盆
 - 村庄的农田中，有20%以上比例的作物，会按气候生成为本模组新作物
-- 优化部分贴图
-- 调料瓶的提示只显示余量
+- 大缸、烤架、批量风干配方改为带稳定 ID 的数据包配方，支持配方重载、覆盖或禁用单条配方
+- 新增关于海洋取水的配置，可在获取海水桶、带海水标记的普通水桶、普通取水三种模式中切换
+- 标记水桶提示简化为“可用于制盐”，修复制盐烧炼后不返还空桶的问题
+- 新增关于箱子战利品表的配置，用于规定是否允许将本模组物品添加到战利品表中，以及具体的物品种类
+- 新增关于村庄农田作物的配置，用于规定是否允许村庄农田生成本模组作物，以及具体的作物种类
 
 **2.9.3**
 
@@ -58,7 +62,86 @@ main 分支为 1.21.1（NeoForge）开发主线；1.20.1（Forge）版本线见 
 {"type":"northeast_china_delight:vat","config":{"disabled":true}}
 ```
 
-修改现有配方时复制模组自带的 JSON 再编辑 `config`；本模组默认有 14 条大缸配方。1.20.1 数据包中的通用标签使用 `forge:`，1.21.1 使用 `c:`。烧烤配方尚未开放此数据包功能。
+修改现有配方时复制模组自带的 JSON 再编辑 `config`；本模组默认有 14 条大缸配方。1.20.1 数据包中的通用标签使用 `forge:`，1.21.1 使用 `c:`。
+
+## 烤架配方数据包
+
+烤架使用 `northeast_china_delight:grill` 配方类型，默认四条配方 ID 为 `northeast_china_delight:grill/grilled_chicken_frame`、`grill/grilled_corn`、`grill/grilled_oil_edge`、`grill/grilled_cold_noodles`（后三条同样使用本模组命名空间）。覆盖烤冷面时，1.21.1 文件路径为 `data/northeast_china_delight/recipe/grill/grilled_cold_noodles.json`，1.20.1 为 `data/northeast_china_delight/recipes/grill/grilled_cold_noodles.json`。禁用示例：
+
+```json
+{"type":"northeast_china_delight:grill","config":{"disabled":true}}
+```
+
+新增配方使用新的文件名或命名空间，例如 1.21.1 的 `data/example/recipe/grill/sweet_carrot.json`：
+
+```json
+{
+  "type": "northeast_china_delight:grill",
+  "config": {
+    "priority": 0,
+    "input": {"item": "minecraft:carrot"},
+    "seasonings": [{"item": "minecraft:sugar"}],
+    "result": {"item": "minecraft:golden_carrot", "count": 1},
+    "seconds": 20
+  }
+}
+```
+
+`input` 和每个调料条目均支持物品、标签及任选数组；`seasonings` 可省略，最多四份，重复条目代表需要多份。瓶装调料仍需用刷子，每份消耗 10 mB。相同食材按 `priority` 从高到低、再按配方 ID 排序。配方属于服务端数据，应作为世界数据包加载，而不是客户端资源包；执行 `/reload` 后实际烤制和 JEI 都使用更新后的配方，标签候选仍在同一格滚动展示。
+
+每份架上食材都会保存所绑定的配方 ID；规则重载后重新计时并保留仍适用的调料。已绑定配方被禁用、删除或改成不匹配的食材时停止加工，不会自动切换到另一条配方，原料仍可空手取回。无 ID 的旧烤架存档首次读取时按食材匹配并绑定。
+
+## 批量风干配方数据包
+
+批量风干使用 `northeast_china_delight:drying` 类型，干豆腐配方 ID 为 `northeast_china_delight:drying/dried_tofu`。1.21.1 的路径是 `data/northeast_china_delight/recipe/drying/dried_tofu.json`，1.20.1 使用 `recipes/drying/`。默认规则如下，1.20.1 将 `c:` 标签改为 `forge:`：
+
+```json
+{
+  "type": "northeast_china_delight:drying",
+  "config": {
+    "priority": 0,
+    "input": {"tag": "c:foods/soy_milk"},
+    "results": [
+      {"item": "northeast_china_delight:dried_tofu", "count": 1},
+      {"item": "minecraft:bowl", "count": 1}
+    ]
+  }
+}
+```
+
+支持新 ID 新增、同 ID 覆盖及 `{"type":"northeast_china_delight:drying","config":{"disabled":true}}` 禁用。原料支持物品、标签和任选数组；产物为 1–2 项，按每份原料扩展数量并自动分堆。加工时长仍由机械动力的鼓风机配置决定，不增加独立的配方时长。执行 `/reload` 后新规则用于实际风干，并刷新 1.21.1 的 JEI 页面；1.20.1 保持原有风干分类不注册的状态。
+
+## 海洋取水配置
+
+通用配置文件为 `config/northeast_china_delight-common.toml`，修改后重启游戏或服务端：
+
+```toml
+[sea_water]
+bucket_mode = 1
+```
+
+- `1`（默认）：保留原行为，在干净的海洋水柱中取水得到海水桶。
+- `2`：在相同环境取水得到带海水标记的原版水桶，可正常倒水，也能用于厨锅及烟熏炉制盐。
+- `3`：关闭本模组的特殊取水，不拦截原版或其他模组的取水流程；普通水源给出未标记的水桶。
+
+未标记的普通水桶不能制盐。标记只附在物品堆叠上，不把全部水桶加入海水标签，不改变水流方块；模式 2 的水倒到陆地后再舀起，不会自动保留海水标记。切换模式不会删除已有海水桶或标记水桶。
+
+## 自然生成配置
+
+在 `config/northeast_china_delight-common.toml` 中，农田与箱子分别有一个开关和一个允许列表：
+
+| 配置项 | 默认值 / 含义 |
+| --- | --- |
+| `worldgen.village_farm_crops_enabled` | `true`，允许本模组作物在村庄农田生成 |
+| `worldgen.village_farm_allowed_crops` | 全部 14 种农田作物的播种物品 ID |
+| `chest_loot.enabled` | `true`，允许本模组物品在箱子战利品生成 |
+| `chest_loot.allowed_items` | 全部 63 种现有箱子候选的物品 ID |
+
+列表由游戏自动写入完整默认值，可直接删除不希望生成的条目；填写完整注册 ID，例如 `northeast_china_delight:soybean`、`northeast_china_delight:corn_seeds`，不要填写中文名。设为 `[]` 表示不允许生成任何本模组候选，开关设为 `false` 则直接关闭对应生成。
+
+两项配置彼此独立；默认保持原有气候分配及概率。农田只影响新生成的村庄，不影响玩家种植和野外植物；箱子包含村庄、其他结构及东北小院，只限制本模组物品，不影响原版/其他模组物品、钓鱼和实体/方块掉落。修改后重启游戏或服务端；已有作物、已经生成的战利品和玩家库存不会被删除。
+
+允许列表只筛选已有候选，不会自动增加新的作物分配或战利品条目；需要新增候选时仍应编辑数据包。多人游戏以服务端配置为准。
 
 ## 许可证
 

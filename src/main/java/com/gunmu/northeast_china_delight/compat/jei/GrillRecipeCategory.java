@@ -1,6 +1,7 @@
 package com.gunmu.northeast_china_delight.compat.jei;
 
 import com.gunmu.northeast_china_delight.block.ModBlocks;
+import com.gunmu.northeast_china_delight.crafting.GrillRecipes;
 import com.gunmu.northeast_china_delight.client.GrillRackGeometry;
 import com.gunmu.northeast_china_delight.item.GrillSeasonings;
 import com.gunmu.northeast_china_delight.item.SeasoningBottleItem;
@@ -51,10 +52,7 @@ public class GrillRecipeCategory implements IRecipeCategory<GrillJeiRecipe> {
 
     private static final int SLOT = 16;
     private static final int STEP = 20;
-    private static final int MAX_SEASONINGS = Math.max(1, GrillJeiRecipes.all().stream()
-            .mapToInt(recipe -> recipe.seasonings().size())
-            .max()
-            .orElse(1));
+    private static final int MAX_SEASONINGS = GrillRecipes.MAX_SEASONINGS;
 
     private static final int STATION_SIZE = 32;
     private static final int STATION_X = 6;
@@ -111,6 +109,11 @@ public class GrillRecipeCategory implements IRecipeCategory<GrillJeiRecipe> {
     @Override
     public RecipeType<GrillJeiRecipe> getRecipeType() {
         return NortheastJeiPlugin.GRILL_TYPE;
+    }
+
+    @Override
+    public ResourceLocation getRegistryName(GrillJeiRecipe recipe) {
+        return recipe.id();
     }
 
     @Override

@@ -2,6 +2,9 @@
 build
 .gradle
 .gradle-registry
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
 
 # 本地 Gradle 家目录 / 守护进程缓存的几种历史写法（都是本机缓存，不入库）
 .gradle-home
@@ -12,8 +15,9 @@ build
 # 构建完成的模组包：各节点的 versions/<版本>/build/libs/ 才是权威产物，
 # 根目录 lib/ 只是本地收集处；libs/ 里只保留第三方编译依赖
 /lib/
-libs/dongbei_delight-*.jar
-libs/northeast_china_delight-*.jar
+!libs/Registrate-MC1.21-1.3.0+67.jar
+!libs/flywheel-neoforge-1.21.1-1.0.6.jar
+!libs/ponder-neoforge-1.0.82+mc1.21.1.jar
 
 # ===== 运行 / 测试 =====
 run
@@ -32,6 +36,11 @@ repo/
 # ===== 杂项 =====
 *.log
 hs_err_pid*.log
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+Desktop.ini
 __pycache__/
 *.pyc
 
@@ -48,6 +57,7 @@ out
 *.iws
 *.iml
 .idea
+.vscode/
 
 # 开发辅助脚本（素材 / 模型 / 结构生成、游戏辅助）：只在本机保留，不入库
 /tools/

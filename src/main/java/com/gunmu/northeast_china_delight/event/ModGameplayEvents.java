@@ -5,6 +5,9 @@ import com.gunmu.northeast_china_delight.block.ModBlocks;
 import com.gunmu.northeast_china_delight.NortheastChinaConfig;
 import com.gunmu.northeast_china_delight.item.ModItems;
 import com.gunmu.northeast_china_delight.item.SeaWaterBucketItem;
+import com.gunmu.northeast_china_delight.item.SeaWaterBuckets;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import com.gunmu.northeast_china_delight.util.DdStacks;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
@@ -34,6 +37,11 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.sounds.SoundSource;
+//? if <1.20.2 {
+/*import net.minecraftforge.event.entity.player.ItemTooltipEvent;
+*///?} else {
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
+//?}
 //? if <1.20.2 {
 /*import net.minecraftforge.eventbus.api.SubscribeEvent;
 *///?} else {
@@ -103,6 +111,11 @@ public final class ModGameplayEvents
     /*@SubscribeEvent
     public static void onWaterBucketPickup(FillBucketEvent event)
     {
+        int mode = NortheastChinaConfig.SEA_WATER_BUCKET_MODE.get();
+        if (mode == SeaWaterBuckets.VANILLA_WATER_BUCKET)
+        {
+            return;
+        }
         // 取水用的必须是空桶（旧代码判断的是「水桶」，那个条件永远不成立）
         ItemStack stack = event.getEmptyBucket();
         if (!stack.is(Items.BUCKET) || !(event.getTarget() instanceof BlockHitResult hit))
@@ -112,18 +125,28 @@ public final class ModGameplayEvents
         Level level = event.getLevel();
         Player player = event.getEntity();
         BlockPos pos = hit.getBlockPos();
-        if (!canPickSeaWater(player, level, pos, hit, stack) || !pickUpOceanWater(player, level, pos))
+        if (!canPickSeaWater(player, level, pos, hit, stack))
+        {
+            return;
+        }
+        ItemStack picked = pickUpOceanWater(player, level, pos);
+        if (picked.isEmpty())
         {
             return;
         }
         // 「扣掉空桶、把新桶塞回玩家手里」交给原版事件流程
-        event.setFilledBucket(new ItemStack(ModItems.SEA_WATER_BUCKET.get()));
+        event.setFilledBucket(SeaWaterBuckets.fromOceanPickup(picked, mode));
         event.setResult(Event.Result.ALLOW);
     }
     *///?} else {
     @SubscribeEvent
     public static void onWaterBucketPickup(PlayerInteractEvent.RightClickItem event)
     {
+        int mode = NortheastChinaConfig.SEA_WATER_BUCKET_MODE.get();
+        if (mode == SeaWaterBuckets.VANILLA_WATER_BUCKET)
+        {
+            return;
+        }
         ItemStack stack = event.getItemStack();
         if (!stack.is(Items.BUCKET))
         {
@@ -148,12 +171,13 @@ public final class ModGameplayEvents
         {
             return;
         }
-        if (!pickUpOceanWater(player, level, pos))
+        ItemStack picked = pickUpOceanWater(player, level, pos);
+        if (picked.isEmpty())
         {
             return;
         }
         ItemStack seaBucket = ItemUtils.createFilledResult(
-                stack, player, new ItemStack(ModItems.SEA_WATER_BUCKET.get()));
+                stack, player, SeaWaterBuckets.fromOceanPickup(picked, mode));
         player.setItemInHand(event.getHand(), seaBucket);
         if (!player.isUsingItem() && player instanceof ServerPlayer serverPlayer)
         {
@@ -177,21 +201,21 @@ public final class ModGameplayEvents
         return SeaWaterBucketItem.isValidOceanColumn(level, pos);
     }
 
-    private static boolean pickUpOceanWater(Player player, Level level, BlockPos pos)
+    private static ItemStack pickUpOceanWater(Player player, Level level, BlockPos pos)
     {
         if (level.isClientSide())
         {
-            return true;
+            return new ItemStack(Items.WATER_BUCKET);
         }
         BlockState state = level.getBlockState(pos);
         if (!(state.getBlock() instanceof BucketPickup pickup))
         {
-            return false;
+            return ItemStack.EMPTY;
         }
         ItemStack picked = pickupFrom(pickup, player, level, pos, state);
         if (picked.isEmpty())
         {
-            return false;
+            return ItemStack.EMPTY;
         }
         player.awardStat(Stats.ITEM_USED.get(Items.BUCKET));
         pickup.getPickupSound(state).ifPresent(sound -> player.playSound(sound, 1.0F, 1.0F));
@@ -200,7 +224,7 @@ public final class ModGameplayEvents
         {
             CriteriaTriggers.FILLED_BUCKET.trigger(serverPlayer, picked);
         }
-        return true;
+        return picked;
     }
 
     /** 1.20.1 的 {@code BucketPickup#pickupBlock} 还没有 player 参数，这里抹平差异。 */
@@ -211,6 +235,16 @@ public final class ModGameplayEvents
         *///?} else {
         return pickup.pickupBlock(player, level, pos, state);
         //?}
+    }
+
+    @SubscribeEvent
+    public static void onMarkedWaterBucketTooltip(ItemTooltipEvent event)
+    {
+        if (SeaWaterBuckets.isMarkedWaterBucket(event.getItemStack()))
+        {
+            event.getToolTip().add(Component.translatable("tooltip.northeast_china_delight.sea_water_marker")
+                    .withStyle(ChatFormatting.GRAY));
+        }
     }
 
     @SubscribeEvent

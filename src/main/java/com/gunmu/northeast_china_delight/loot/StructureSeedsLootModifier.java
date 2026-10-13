@@ -1,5 +1,6 @@
 package com.gunmu.northeast_china_delight.loot;
 
+import com.gunmu.northeast_china_delight.NortheastChinaConfig;
 import com.gunmu.northeast_china_delight.item.ModItems;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -78,10 +79,14 @@ public class StructureSeedsLootModifier extends LootModifier
     @Override
     protected ObjectArrayList<ItemStack> doApply(ObjectArrayList<ItemStack> generatedLoot, LootContext context)
     {
+        if (!NortheastChinaConfig.isChestLootEnabled())
+        {
+            return generatedLoot;
+        }
         var random = context.getRandom();
         if (random.nextFloat() < 0.15F)
         {
-            generatedLoot.add(roll(random, SEEDS));
+            ChestLootConfigModifier.addIfAllowed(generatedLoot, roll(random, SEEDS));
         }
         return generatedLoot;
     }

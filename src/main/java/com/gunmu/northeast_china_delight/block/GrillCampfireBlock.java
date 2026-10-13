@@ -183,7 +183,8 @@ public class GrillCampfireBlock extends CampfireBlock {
             return InteractionResult.sidedSuccess(false);
         }
 
-        if (GrillRecipes.byInput(stack) != null) {
+        GrillRecipes.Recipe inputRecipe = GrillRecipes.byInput(level.getRecipeManager(), stack);
+        if (inputRecipe != null) {
             int slot = clickedSlot(state, hit);
             if (!grill.getItems().get(slot).isEmpty()) {
                 slot = firstEmptySlot(grill);
@@ -192,9 +193,7 @@ public class GrillCampfireBlock extends CampfireBlock {
                 hint(player, "message.northeast_china_delight.grill.full");
                 return InteractionResult.sidedSuccess(false);
             }
-            grill.getItems().set(slot, DdStacks.consumeAndReturn(stack, 1, player));
-            grill.setProgress(slot, 0);
-            grill.setChanged();
+            grill.setFood(slot, DdStacks.consumeAndReturn(stack, 1, player), inputRecipe);
             level.sendBlockUpdated(pos, state, state, 3);
             level.playSound(null, pos, SoundEvents.COMPOSTER_FILL_SUCCESS, SoundSource.BLOCKS, 1.0F, 1.0F);
             return InteractionResult.sidedSuccess(false);
@@ -210,7 +209,7 @@ public class GrillCampfireBlock extends CampfireBlock {
             hint(player, "message.northeast_china_delight.grill.no_food");
             return InteractionResult.sidedSuccess(false);
         }
-        GrillRecipes.Recipe recipe = GrillRecipes.byInput(grill.getItems().get(slot));
+        GrillRecipes.Recipe recipe = grill.recipeOf(slot, level.getRecipeManager());
         if (recipe == null || !recipe.needsSeasoning(grill.seasoningsOf(slot), seasoning)) {
             hint(player, "message.northeast_china_delight.grill.not_needed");
             return InteractionResult.sidedSuccess(false);
@@ -219,7 +218,7 @@ public class GrillCampfireBlock extends CampfireBlock {
             hint(player, "message.northeast_china_delight.grill.need_brush");
             return InteractionResult.sidedSuccess(false);
         }
-        if (!grill.addSeasoning(slot, seasoning)) {
+        if (!grill.addSeasoning(slot, seasoning, level.getRecipeManager())) {
             hint(player, "message.northeast_china_delight.grill.full");
             return InteractionResult.sidedSuccess(false);
         }
@@ -363,7 +362,7 @@ public class GrillCampfireBlock extends CampfireBlock {
                 grill.setProgress(slot, 0);
                 continue;
             }
-            GrillRecipes.Recipe recipe = GrillRecipes.byInput(food);
+            GrillRecipes.Recipe recipe = grill.recipeOf(slot, level.getRecipeManager());
             if (recipe == null || !recipe.seasoningsReady(grill.seasoningsOf(slot)) || !lit) {
                 highest = Math.max(highest, grill.progress(slot));
                 continue;

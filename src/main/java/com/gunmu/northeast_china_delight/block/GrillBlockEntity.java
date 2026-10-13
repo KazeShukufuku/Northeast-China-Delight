@@ -1,21 +1,29 @@
 package com.gunmu.northeast_china_delight.block;
 
+import com.gunmu.northeast_china_delight.crafting.GrillRecipes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import com.gunmu.northeast_china_delight.util.DdNbt;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -24,7 +32,7 @@ import java.util.List;
 public class GrillBlockEntity extends BlockEntity {
 
     public static final int SLOTS = 4;
-    public static final int SEASONINGS_PER_SLOT = 4;
+    public static final int SEASONINGS_PER_SLOT = GrillRecipes.MAX_SEASONINGS;
 
     private static final float CORNER = 0.3125F;
 
@@ -32,6 +40,9 @@ public class GrillBlockEntity extends BlockEntity {
     private final NonNullList<ItemStack> seasonings =
             NonNullList.withSize(SLOTS * SEASONINGS_PER_SLOT, ItemStack.EMPTY);
     private final int[] progress = new int[SLOTS];
+    private final ResourceLocation[] recipeIds = new ResourceLocation[SLOTS];
+    private final GrillRecipes.Recipe[] resolvedRecipes = new GrillRecipes.Recipe[SLOTS];
+    private final boolean[] recipesResolved = new boolean[SLOTS];
 
     public GrillBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.GRILL_CAMPFIRE.get(), pos, state);
@@ -69,7 +80,71 @@ public class GrillBlockEntity extends BlockEntity {
         return list;
     }
 
-    public boolean addSeasoning(int slot, ItemStack stack) {
+    public void setFood(int slot, ItemStack stack, GrillRecipes.Recipe recipe) {
+        clearSlot(slot);
+        this.items.set(slot, stack.copyWithCount(1));
+        this.recipeIds[slot] = recipe.id();
+        this.resolvedRecipes[slot] = recipe;
+        this.recipesResolved[slot] = true;
+        setChanged();
+    }
+
+    @Nullable
+    public GrillRecipes.Recipe recipeOf(int slot, RecipeManager manager) {
+        ItemStack food = this.items.get(slot);
+        if (food.isEmpty()) {
+            return null;
+        }
+        if (this.recipeIds[slot] == null) {
+            GrillRecipes.Recipe recipe = GrillRecipes.byInput(manager, food);
+            if (recipe != null) {
+                this.recipeIds[slot] = recipe.id();
+                this.resolvedRecipes[slot] = recipe;
+                this.recipesResolved[slot] = true;
+                retainSeasonings(slot, recipe);
+                setChanged();
+            }
+            return recipe;
+        }
+        GrillRecipes.Recipe recipe = GrillRecipes.byId(manager, this.recipeIds[slot]);
+        if (recipe != null && !recipe.input().test(food)) {
+            recipe = null;
+        }
+        if (recipe == null || (this.recipesResolved[slot] && this.resolvedRecipes[slot] != recipe)) {
+            setProgress(slot, 0);
+        }
+        if (!this.recipesResolved[slot] || this.resolvedRecipes[slot] != recipe) {
+            if (recipe != null) {
+                retainSeasonings(slot, recipe);
+            }
+            this.resolvedRecipes[slot] = recipe;
+            this.recipesResolved[slot] = true;
+        }
+        return recipe;
+    }
+
+    private void retainSeasonings(int slot, GrillRecipes.Recipe recipe) {
+        List<Item> retained = new ArrayList<>();
+        int base = slot * SEASONINGS_PER_SLOT;
+        for (int seasoningIndex = 0; seasoningIndex < SEASONINGS_PER_SLOT; seasoningIndex++) {
+            ItemStack seasoning = this.seasonings.get(base + seasoningIndex);
+            if (seasoning.isEmpty()) {
+                continue;
+            }
+            if (recipe.needsSeasoning(retained, seasoning)) {
+                retained.add(seasoning.getItem());
+            } else {
+                this.seasonings.set(base + seasoningIndex, ItemStack.EMPTY);
+                setChanged();
+            }
+        }
+    }
+
+    public boolean addSeasoning(int slot, ItemStack stack, RecipeManager manager) {
+        GrillRecipes.Recipe recipe = recipeOf(slot, manager);
+        if (recipe == null || !recipe.needsSeasoning(seasoningsOf(slot), stack)) {
+            return false;
+        }
         int base = slot * SEASONINGS_PER_SLOT;
         for (int i = 0; i < SEASONINGS_PER_SLOT; i++) {
             if (this.seasonings.get(base + i).isEmpty()) {
@@ -99,11 +174,15 @@ public class GrillBlockEntity extends BlockEntity {
             this.seasonings.set(base + i, ItemStack.EMPTY);
         }
         this.progress[slot] = 0;
+        this.recipeIds[slot] = null;
+        this.resolvedRecipes[slot] = null;
+        this.recipesResolved[slot] = false;
         setChanged();
     }
 
     public void setItemsFrom(List<ItemStack> source) {
         for (int i = 0; i < this.items.size(); i++) {
+            clearSlot(i);
             this.items.set(i, i < source.size() ? source.get(i).copy() : ItemStack.EMPTY);
         }
         setChanged();
@@ -130,9 +209,17 @@ public class GrillBlockEntity extends BlockEntity {
         if (tag.contains("Seasonings")) {
             DdNbt.loadAllItems(tag.getCompound("Seasonings"), this.seasonings, registries);
         }
+        Arrays.fill(this.progress, 0);
         if (tag.contains("GrillProgress")) {
             int[] saved = tag.getIntArray("GrillProgress");
             System.arraycopy(saved, 0, this.progress, 0, Math.min(saved.length, this.progress.length));
+        }
+        Arrays.fill(this.recipeIds, null);
+        Arrays.fill(this.resolvedRecipes, null);
+        Arrays.fill(this.recipesResolved, false);
+        ListTag ids = tag.getList("GrillRecipes", Tag.TAG_STRING);
+        for (int slot = 0; slot < Math.min(ids.size(), SLOTS); slot++) {
+            this.recipeIds[slot] = ResourceLocation.tryParse(ids.getString(slot));
         }
     }
 
@@ -156,6 +243,11 @@ public class GrillBlockEntity extends BlockEntity {
         DdNbt.saveAllItems(seasoningsTag, this.seasonings, true, registries);
         tag.put("Seasonings", seasoningsTag);
         tag.putIntArray("GrillProgress", this.progress);
+        ListTag ids = new ListTag();
+        for (ResourceLocation recipeId : this.recipeIds) {
+            ids.add(StringTag.valueOf(recipeId == null ? "" : recipeId.toString()));
+        }
+        tag.put("GrillRecipes", ids);
     }
 
     @Override

@@ -10,11 +10,14 @@ import com.gunmu.northeast_china_delight.client.VatRenderer;
 import com.gunmu.northeast_china_delight.compat.create.ModFanProcessingTypes;
 import com.gunmu.northeast_china_delight.compat.jei.VatJeiSync;
 import com.gunmu.northeast_china_delight.crafting.ModVatRecipes;
+import com.gunmu.northeast_china_delight.crafting.ModGrillRecipes;
+import com.gunmu.northeast_china_delight.crafting.ModDryingRecipes;
 import com.gunmu.northeast_china_delight.effect.DishEffectEvents;
 import com.gunmu.northeast_china_delight.effect.ModEffects;
 import com.gunmu.northeast_china_delight.event.ModGameplayEvents;
 import com.gunmu.northeast_china_delight.fluid.ModFluids;
 import com.gunmu.northeast_china_delight.item.ModItems;
+import com.gunmu.northeast_china_delight.item.SeaWaterBuckets;
 import com.gunmu.northeast_china_delight.loot.ModLootModifiers;
 import com.gunmu.northeast_china_delight.util.DdIds;
 import com.gunmu.northeast_china_delight.villager.ModButcherTrades;
@@ -153,10 +156,13 @@ public class NortheastChinaDelight
     {
     //?}
         ModItems.register(modEventBus);
+        SeaWaterBuckets.register(modEventBus);
         ModBlocks.register(modEventBus);
         ModFluids.register(modEventBus);
         ModBlockEntities.register(modEventBus);
         ModVatRecipes.register(modEventBus);
+        ModGrillRecipes.register(modEventBus);
+        ModDryingRecipes.register(modEventBus);
         ModCreativeTabs.register(modEventBus);
         ModLootModifiers.register(modEventBus);
         ModEffects.register(modEventBus);

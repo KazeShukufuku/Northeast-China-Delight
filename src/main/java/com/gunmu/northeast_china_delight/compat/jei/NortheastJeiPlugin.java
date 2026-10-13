@@ -30,6 +30,10 @@ public class NortheastJeiPlugin implements IModPlugin {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static IJeiRuntime runtime;
     private static java.util.List<VatJeiRecipe> registeredVatRecipes = java.util.List.of();
+    private static java.util.List<GrillJeiRecipe> registeredGrillRecipes = java.util.List.of();
+    //? if >=1.20.5 {
+    private static java.util.List<DryingJeiRecipe> registeredDryingRecipes = java.util.List.of();
+    //?}
 
     public static final RecipeType<VatJeiRecipe> VAT_TYPE =
             RecipeType.create(NortheastChinaDelight.MODID, "vat", VatJeiRecipe.class);
@@ -67,11 +71,13 @@ public class NortheastJeiPlugin implements IModPlugin {
         if (connection != null) {
             registeredVatRecipes = VatJeiRecipes.all(connection.getRecipeManager());
             registration.addRecipes(VAT_TYPE, registeredVatRecipes);
+            registeredGrillRecipes = GrillJeiRecipes.all(connection.getRecipeManager());
+            registration.addRecipes(GRILL_TYPE, registeredGrillRecipes);
+            //? if >=1.20.5 {
+            registeredDryingRecipes = DryingJeiRecipes.all(connection.getRecipeManager());
+            registration.addRecipes(DRYING_TYPE, registeredDryingRecipes);
+            //?}
         }
-        registration.addRecipes(GRILL_TYPE, GrillJeiRecipes.all());
-        //? if >=1.20.5 {
-        registration.addRecipes(DRYING_TYPE, DryingJeiRecipes.all());
-        //?}
         registration.addItemStackInfo(new ItemStack(ModItems.GINSENG.get()),
                 Component.translatable("jei.northeast_china_delight.info.ginseng"));
         registration.addItemStackInfo(new ItemStack(ModItems.WOOD_EAR.get()),
@@ -95,8 +101,8 @@ public class NortheastJeiPlugin implements IModPlugin {
         runtime = jeiRuntime;
         LOGGER.info("大缸 JEI 配方：{} 页，源配方 {} 条",
                 registeredVatRecipes.size(), registeredVatRecipes.size());
-        if (registeredVatRecipes.isEmpty()) {
-            refreshVatRecipes(Minecraft.getInstance().getConnection() == null ? null
+        if (registeredVatRecipes.isEmpty() || registeredGrillRecipes.isEmpty()) {
+            refreshRecipes(Minecraft.getInstance().getConnection() == null ? null
                     : Minecraft.getInstance().getConnection().getRecipeManager());
         }
     }
@@ -105,9 +111,13 @@ public class NortheastJeiPlugin implements IModPlugin {
     public void onRuntimeUnavailable() {
         runtime = null;
         registeredVatRecipes = java.util.List.of();
+        registeredGrillRecipes = java.util.List.of();
+        //? if >=1.20.5 {
+        registeredDryingRecipes = java.util.List.of();
+        //?}
     }
 
-    public static void refreshVatRecipes(net.minecraft.world.item.crafting.RecipeManager manager) {
+    public static void refreshRecipes(net.minecraft.world.item.crafting.RecipeManager manager) {
         if (runtime == null || manager == null) {
             return;
         }
@@ -115,6 +125,16 @@ public class NortheastJeiPlugin implements IModPlugin {
         runtime.getRecipeManager().hideRecipes(VAT_TYPE, registeredVatRecipes);
         runtime.getRecipeManager().addRecipes(VAT_TYPE, updated);
         registeredVatRecipes = updated;
+        java.util.List<GrillJeiRecipe> updatedGrill = GrillJeiRecipes.all(manager);
+        runtime.getRecipeManager().hideRecipes(GRILL_TYPE, registeredGrillRecipes);
+        runtime.getRecipeManager().addRecipes(GRILL_TYPE, updatedGrill);
+        registeredGrillRecipes = updatedGrill;
+        //? if >=1.20.5 {
+        java.util.List<DryingJeiRecipe> updatedDrying = DryingJeiRecipes.all(manager);
+        runtime.getRecipeManager().hideRecipes(DRYING_TYPE, registeredDryingRecipes);
+        runtime.getRecipeManager().addRecipes(DRYING_TYPE, updatedDrying);
+        registeredDryingRecipes = updatedDrying;
+        //?}
     }
 
     @Override

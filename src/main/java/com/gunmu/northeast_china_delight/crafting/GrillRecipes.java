@@ -1,82 +1,105 @@
 package com.gunmu.northeast_china_delight.crafting;
 
-import com.gunmu.northeast_china_delight.ModTags;
-import com.gunmu.northeast_china_delight.item.ModItems;
-import net.minecraft.core.NonNullList;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.RecipeManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
-/**
- * 烧烤架的全部配方。和大缸那边一样先写在代码里，结构已经和将来的数据包配方一一对应。一条配方 = 一份食材 + 若干种调料 → 一份成品。
- */
 public final class GrillRecipes {
 
-    /**
-     * 一条烧烤配方。 @param input 食材（支持标签，所以「任意生鱼」这类写法也能用） @param seasonings 需要的调料，按种类算，每样一份（标签 = 矿物词
-     * 典，别家的同味调料也能用） @param result 成品 @param seconds 烤制秒数
-     */
-    public record Recipe(Ingredient input, List<Ingredient> seasonings, ItemStack result, int seconds) {
+    public static final int MAX_SEASONINGS = 4;
+
+    public record Recipe(ResourceLocation id, int priority, Ingredient input, List<Ingredient> seasonings,
+                         ItemStack result, int seconds) {
+
+        public Recipe {
+            seasonings = List.copyOf(seasonings);
+            result = result.copy();
+        }
+
+        public Recipe withId(ResourceLocation id) {
+            return new Recipe(id, this.priority, this.input, this.seasonings, this.result, this.seconds);
+        }
 
         public int ticks() {
-            return Math.max(1, this.seconds * 20);
+            return this.seconds * 20;
         }
 
-        /** 还没盖上的调料。每一份已加调料只抵消配方里第一个对得上的条目。 */
-        private List<Ingredient> remainingSeasonings(List<Item> applied) {
-            List<Ingredient> needed = new ArrayList<>(this.seasonings);
-            for (Item item : applied) {
-                ItemStack probe = new ItemStack(item);
-                for (int i = 0; i < needed.size(); i++) {
-                    if (needed.get(i).test(probe)) {
-                        needed.remove(i);
-                        break;
-                    }
+        private int matchedSeasonings(List<Item> applied) {
+            int[] assigned = new int[this.seasonings.size()];
+            Arrays.fill(assigned, -1);
+            int matched = 0;
+            for (int appliedIndex = 0; appliedIndex < applied.size(); appliedIndex++) {
+                if (assignSeasoning(appliedIndex, applied, assigned, new boolean[assigned.length])) {
+                    matched++;
                 }
             }
-            return needed;
+            return matched;
         }
 
-        public boolean seasoningsReady(List<Item> applied) {
-            return this.remainingSeasonings(applied).isEmpty();
-        }
-
-        /** 还需要这份调料吗（用来判断玩家手里的东西能不能放上去） */
-        public boolean needsSeasoning(List<Item> applied, ItemStack stack) {
-            for (Ingredient seasoning : this.remainingSeasonings(applied)) {
-                if (seasoning.test(stack)) {
-                    return true;
+        private boolean assignSeasoning(int appliedIndex, List<Item> applied, int[] assigned, boolean[] visited) {
+            ItemStack probe = new ItemStack(applied.get(appliedIndex));
+            for (int requiredIndex = 0; requiredIndex < this.seasonings.size(); requiredIndex++) {
+                if (!visited[requiredIndex] && this.seasonings.get(requiredIndex).test(probe)) {
+                    visited[requiredIndex] = true;
+                    if (assigned[requiredIndex] < 0
+                            || assignSeasoning(assigned[requiredIndex], applied, assigned, visited)) {
+                        assigned[requiredIndex] = appliedIndex;
+                        return true;
+                    }
                 }
             }
             return false;
         }
-    }
 
-    private static List<Recipe> recipes;
+        public boolean seasoningsReady(List<Item> applied) {
+            return this.matchedSeasonings(applied) == this.seasonings.size();
+        }
+
+        public boolean needsSeasoning(List<Item> applied, ItemStack stack) {
+            if (stack.isEmpty()) {
+                return false;
+            }
+            List<Item> candidate = new ArrayList<>(applied);
+            candidate.add(stack.getItem());
+            return this.matchedSeasonings(candidate) > this.matchedSeasonings(applied);
+        }
+    }
 
     private GrillRecipes() {
     }
 
-    public static List<Recipe> all() {
-        if (recipes == null) {
-            recipes = build();
+    public static List<Recipe> all(RecipeManager manager) {
+        List<Recipe> recipes = new ArrayList<>();
+        //? if <1.20.5 {
+        /*for (GrillDataRecipe entry : manager.getAllRecipesFor(ModGrillRecipes.TYPE.get())) {
+            Recipe recipe = entry.rule(entry.getId());
+        *///?} else {
+        for (var entry : manager.getAllRecipesFor(ModGrillRecipes.TYPE.get())) {
+            Recipe recipe = entry.value().rule(entry.id());
+        //?}
+            if (recipe != null) {
+                recipes.add(recipe);
+            }
         }
-        return recipes;
+        recipes.sort(Comparator.comparingInt(Recipe::priority).reversed()
+                .thenComparing(recipe -> recipe.id().toString()));
+        return List.copyOf(recipes);
     }
 
     @Nullable
-    public static Recipe byInput(ItemStack stack) {
+    public static Recipe byInput(RecipeManager manager, ItemStack stack) {
         if (stack.isEmpty()) {
             return null;
         }
-        for (Recipe recipe : all()) {
+        for (Recipe recipe : all(manager)) {
             if (recipe.input().test(stack)) {
                 return recipe;
             }
@@ -84,34 +107,13 @@ public final class GrillRecipes {
         return null;
     }
 
-    private static List<Recipe> build() {
-        List<Recipe> list = new ArrayList<>();
-
-        list.add(new Recipe(
-                Ingredient.of(ModItems.CHICKEN_FRAME.get()),
-                List.of(Ingredient.of(ModTags.FOODS_CHILI_OIL), Ingredient.of(ModTags.SUGAR)),
-                new ItemStack(ModItems.GRILLED_CHICKEN_FRAME.get()),
-                20));
-
-        list.add(new Recipe(
-                Ingredient.of(ModTags.CROPS_CORN),
-                List.of(Ingredient.of(ModTags.SUGAR)),
-                new ItemStack(ModItems.GRILLED_CORN.get()),
-                20));
-
-        list.add(new Recipe(
-                Ingredient.of(ModItems.OIL_EDGE.get()),
-                List.of(Ingredient.of(ModTags.FOODS_SALT), Ingredient.of(ModTags.FOODS_CHILI_OIL)),
-                new ItemStack(ModItems.GRILLED_OIL_EDGE.get()),
-                25));
-
-        list.add(new Recipe(
-                Ingredient.of(ModItems.COLD_NOODLE_SHEET.get()),
-                List.of(Ingredient.of(ModTags.FOODS_CHILI_SAUCE), Ingredient.of(ModTags.EGGS),
-                        Ingredient.of(ModTags.SUGAR), Ingredient.of(ModTags.FOODS_VINEGAR)),
-                new ItemStack(ModItems.GRILLED_COLD_NOODLES.get()),
-                30));
-
-        return List.copyOf(list);
+    @Nullable
+    public static Recipe byId(RecipeManager manager, ResourceLocation id) {
+        //? if <1.20.5 {
+        /*var loaded = manager.byKey(id).orElse(null);
+        *///?} else {
+        var loaded = manager.byKey(id).map(entry -> entry.value()).orElse(null);
+        //?}
+        return loaded instanceof GrillDataRecipe recipe ? recipe.rule(id) : null;
     }
 }

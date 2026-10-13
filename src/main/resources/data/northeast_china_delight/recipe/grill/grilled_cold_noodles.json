@@ -1,0 +1,14 @@
+{
+  "type": "northeast_china_delight:grill",
+  "config": {
+    "input": {"item": "northeast_china_delight:cold_noodle_sheet"},
+    "seasonings": [
+      {"tag": "c:foods/seasonings/chili_sauce"},
+      {"tag": "c:eggs"},
+      {"tag": "c:sugar"},
+      {"tag": "c:foods/seasonings/vinegar"}
+    ],
+    "result": {"item": "northeast_china_delight:grilled_cold_noodles", "count": 1},
+    "seconds": 30
+  }
+}
