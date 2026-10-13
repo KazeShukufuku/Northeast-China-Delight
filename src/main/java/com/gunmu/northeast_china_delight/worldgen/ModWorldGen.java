@@ -6,6 +6,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConfiguration;
 import net.minecraft.world.level.levelgen.structure.StructureType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
+import net.minecraft.world.level.levelgen.structure.templatesystem.RuleTestType;
 //? if <1.20.2 {
 import net.minecraftforge.eventbus.api.IEventBus;
 //?} else {
@@ -21,6 +22,12 @@ import java.util.function.Supplier;
 
 public class ModWorldGen
 {
+    public static final DeferredRegister<RuleTestType<?>> RULE_TESTS =
+            DeferredRegister.create(Registries.RULE_TEST, NortheastChinaDelight.MODID);
+
+    public static final Supplier<RuleTestType<VillageFarmCropRuleTest>> VILLAGE_FARM_CROP_TEST =
+            RULE_TESTS.register("village_farm_crop", () -> () -> VillageFarmCropRuleTest.CODEC);
+
     public static final DeferredRegister<Feature<?>> FEATURES =
             DeferredRegister.create(Registries.FEATURE, NortheastChinaDelight.MODID);
 
@@ -71,6 +78,7 @@ public class ModWorldGen
 
     public static void register(IEventBus eventBus)
     {
+        RULE_TESTS.register(eventBus);
         FEATURES.register(eventBus);
         STRUCTURE_TYPES.register(eventBus);
         PIECE_TYPES.register(eventBus);

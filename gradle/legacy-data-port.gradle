@@ -129,10 +129,20 @@ ext.legacyUnescapeUnicode = { String json ->
 ext.legacyTransformNode = { Object node, Map env ->
     if (node instanceof Map) {
         def map = node as Map
+        if (map.get('type') == 'neoforge:compound') {
+            env.changed = true
+            return legacyTransformNode(map.get('children') ?: map.get('ingredients'), env)
+        }
         if (map.get('type') == 'neoforge:components') {
             def items = map.get('items')
             def one = items instanceof List ? items.get(0) : items
             env.changed = true
+            def components = map.get('components')
+            if (components instanceof Map && components.get('northeast_china_delight:sea_water') == true) {
+                return ['type': 'forge:partial_nbt',
+                        'items': items instanceof List ? items : [items],
+                        'nbt': '{"northeast_china_delight:sea_water":1b}']
+            }
             return ['item': one]
         }
         def out = new LinkedHashMap()
@@ -332,7 +342,9 @@ ext.portLegacyDataTree = { File resourcesDir ->
             return
         }
 
-        def env = [changed: false, recipe: newRel.contains('/recipes/') && !newRel.contains('/recipes/vat/'),
+        def env = [changed: false, recipe: newRel.contains('/recipes/')
+                   && !newRel.contains('/recipes/vat/') && !newRel.contains('/recipes/grill/')
+                   && !newRel.contains('/recipes/drying/'),
                    advancement: newRel.contains('/advancements/')]
         if (rel.endsWith('.json')) {
             def root = slurper.parse(src, 'UTF-8')

@@ -31,7 +31,7 @@ public final class VatJeiSync {
 
     @SubscribeEvent
     public static void onRecipesUpdated(RecipesUpdatedEvent event) {
-        NortheastJeiPlugin.refreshVatRecipes(event.getRecipeManager());
+        NortheastJeiPlugin.refreshRecipes(event.getRecipeManager());
         for (String problem : VatRecipeValidator.check(VatRecipes.all(event.getRecipeManager()), true)) {
             LOGGER.warn("[大缸配方] {}", problem);
         }

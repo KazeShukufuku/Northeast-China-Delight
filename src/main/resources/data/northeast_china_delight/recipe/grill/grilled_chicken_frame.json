@@ -1,0 +1,12 @@
+{
+  "type": "northeast_china_delight:grill",
+  "config": {
+    "input": {"item": "northeast_china_delight:chicken_frame"},
+    "seasonings": [
+      {"tag": "c:foods/seasonings/chili_oil"},
+      {"tag": "c:sugar"}
+    ],
+    "result": {"item": "northeast_china_delight:grilled_chicken_frame", "count": 1},
+    "seconds": 20
+  }
+}

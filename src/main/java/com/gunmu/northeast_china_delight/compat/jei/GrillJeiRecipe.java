@@ -1,5 +1,6 @@
 package com.gunmu.northeast_china_delight.compat.jei;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -8,6 +9,6 @@ import java.util.List;
  * JEI 里的一条「烧烤」配方：一份食材 + 若干种调料 → 一份成品。 @param ingredient 食材（支持标签时这里会有多种可选的物品） @param seasonings
  * 需要的调料，一样一格、格内滚动 @param result 成品 @param seconds 烤制秒数，写在箭头下面
  */
-public record GrillJeiRecipe(List<ItemStack> ingredient, List<List<ItemStack>> seasonings, ItemStack result,
-                             int seconds) {
+public record GrillJeiRecipe(ResourceLocation id, List<ItemStack> ingredient, List<List<ItemStack>> seasonings,
+                             ItemStack result, int seconds) {
 }

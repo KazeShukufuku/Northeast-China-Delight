@@ -1,5 +1,6 @@
 package com.gunmu.northeast_china_delight.loot;
 
+import com.gunmu.northeast_china_delight.NortheastChinaConfig;
 import com.gunmu.northeast_china_delight.item.ModItems;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -65,14 +66,18 @@ public class FishermanLootModifier extends LootModifier
     @Override
     protected ObjectArrayList<ItemStack> doApply(ObjectArrayList<ItemStack> generatedLoot, LootContext context)
     {
+        if (!NortheastChinaConfig.isChestLootEnabled())
+        {
+            return generatedLoot;
+        }
         var random = context.getRandom();
         if (random.nextFloat() < 0.18F)
         {
-            generatedLoot.add(roll(random, RAW, 1, 2));
+            ChestLootConfigModifier.addIfAllowed(generatedLoot, roll(random, RAW, 1, 2));
         }
         if (random.nextFloat() < 0.10F)
         {
-            generatedLoot.add(roll(random, DISH, 1, 1));
+            ChestLootConfigModifier.addIfAllowed(generatedLoot, roll(random, DISH, 1, 1));
         }
         return generatedLoot;
     }

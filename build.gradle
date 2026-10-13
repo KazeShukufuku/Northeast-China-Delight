@@ -242,11 +242,11 @@ if (sc.current.version.compareTo('1.20.5') >= 0) {
 }
 
 if (sc.current.version.compareTo('1.20.5') < 0) {
-    apply from: "${rootDir}/gradle/legacy-data-port.groovy"
+    apply from: "${rootDir}/gradle/legacy-data-port.gradle"
 
     def legacyResourcesOut = sourceSets.main.output.resourcesDir
     tasks.named('processResources', ProcessResources).configure { task ->
-        task.inputs.file("${rootDir}/gradle/legacy-data-port.groovy")
+        task.inputs.file("${rootDir}/gradle/legacy-data-port.gradle")
         task.doLast {
             portLegacyDataTree(legacyResourcesOut)
         }

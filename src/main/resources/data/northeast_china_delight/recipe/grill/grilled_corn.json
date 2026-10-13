@@ -1,0 +1,11 @@
+{
+  "type": "northeast_china_delight:grill",
+  "config": {
+    "input": {"tag": "c:crops/corn"},
+    "seasonings": [
+      {"tag": "c:sugar"}
+    ],
+    "result": {"item": "northeast_china_delight:grilled_corn", "count": 1},
+    "seconds": 20
+  }
+}

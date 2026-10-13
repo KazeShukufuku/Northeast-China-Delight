@@ -72,6 +72,11 @@ public class DryingRecipeCategory implements IRecipeCategory<DryingJeiRecipe> {
     @Override public int getHeight() { return HEIGHT; }
 
     @Override
+    public ResourceLocation getRegistryName(DryingJeiRecipe recipe) {
+        return recipe.id();
+    }
+
+    @Override
     public void setRecipe(IRecipeLayoutBuilder builder, DryingJeiRecipe recipe, IFocusGroup focuses) {
         builder.addSlot(RecipeIngredientRole.INPUT, INPUT_X, INPUT_Y)
                 .addItemStacks(recipe.ingredient()).setStandardSlotBackground();

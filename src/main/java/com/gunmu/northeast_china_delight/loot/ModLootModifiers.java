@@ -60,6 +60,7 @@ public class ModLootModifiers {
         add("butcher_loot", ButcherLootModifier.CODEC);
         add("fisherman_loot", FishermanLootModifier.CODEC);
         add("village_seeds", VillageSeedsLootModifier.CODEC);
+        add("chest_loot_config", ChestLootConfigModifier.CODEC);
 
         LOOT_MODIFIERS.register(eventBus);
     }

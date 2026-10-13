@@ -4,7 +4,16 @@
   "cookingtime": 100,
   "experience": 0.35,
   "ingredient": {
-    "item": "northeast_china_delight:sea_water_bucket"
+    "type": "neoforge:compound",
+    "children": [
+      { "item": "northeast_china_delight:sea_water_bucket" },
+      {
+        "type": "neoforge:components",
+        "items": ["minecraft:water_bucket"],
+        "components": { "northeast_china_delight:sea_water": true },
+        "strict": false
+      }
+    ]
   },
   "result": {
     "count": 1,

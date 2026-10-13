@@ -1,9 +1,10 @@
 package com.gunmu.northeast_china_delight.compat.jei;
 
-import com.gunmu.northeast_china_delight.item.ModItems;
+import com.gunmu.northeast_china_delight.crafting.DryingRecipes;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeManager;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -13,13 +14,15 @@ public final class DryingJeiRecipes {
 
     private DryingJeiRecipes() {}
 
-    public static List<DryingJeiRecipe> all() {
-        return List.of(
-                new DryingJeiRecipe(
-                        List.of(new ItemStack(ModItems.SOY_MILK.get())),
-                        List.of(new ItemStack(ModItems.DRIED_TOFU.get()), new ItemStack(Items.BOWL)),
-                        200
-                )
-        );
+    public static List<DryingJeiRecipe> all(RecipeManager manager) {
+        if (manager == null) {
+            return List.of();
+        }
+        return DryingRecipes.all(manager).stream()
+                .map(recipe -> new DryingJeiRecipe(recipe.id(),
+                        Arrays.stream(recipe.input().getItems()).map(ItemStack::copy).toList(),
+                        recipe.results().stream().map(ItemStack::copy).toList()))
+                .filter(recipe -> !recipe.ingredient().isEmpty())
+                .toList();
     }
 }

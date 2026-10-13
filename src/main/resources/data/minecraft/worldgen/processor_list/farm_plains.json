@@ -6,7 +6,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:soybean",
             "probability": 0.04
           },
           "location_predicate": {
@@ -22,7 +23,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:corn_seeds",
             "probability": 0.04
           },
           "location_predicate": {
@@ -38,7 +40,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:napa_cabbage_seeds",
             "probability": 0.04
           },
           "location_predicate": {
@@ -54,7 +57,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:cucumber_seeds",
             "probability": 0.04
           },
           "location_predicate": {
@@ -70,7 +74,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:green_onion_seeds",
             "probability": 0.04
           },
           "location_predicate": {
@@ -86,7 +91,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:green_radish_seeds",
             "probability": 0.04
           },
           "location_predicate": {
@@ -102,7 +108,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:eggplant_seeds",
             "probability": 0.04
           },
           "location_predicate": {
@@ -118,7 +125,8 @@
         {
           "input_predicate": {
             "block": "minecraft:wheat",
-            "predicate_type": "minecraft:random_block_match",
+            "predicate_type": "northeast_china_delight:village_farm_crop",
+            "crop_item": "northeast_china_delight:green_beans_seeds",
             "probability": 0.04
           },
           "location_predicate": {

@@ -1,7 +1,7 @@
 package com.gunmu.northeast_china_delight.compat.create;
 
 import com.gunmu.northeast_china_delight.NortheastChinaDelight;
-import com.gunmu.northeast_china_delight.item.ModItems;
+import com.gunmu.northeast_china_delight.crafting.DryingRecipes;
 //? if <1.20.2 || >=1.20.5 {
 import com.simibubi.create.api.registry.CreateRegistries;
 import com.simibubi.create.content.kinetics.fan.EncasedFanBlock;
@@ -13,7 +13,6 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -77,16 +76,13 @@ public class ModFanProcessingTypes {
 
         @Override
         public boolean canProcess(ItemStack stack, Level level) {
-            return stack.is(com.gunmu.northeast_china_delight.ModTags.FOODS_SOY_MILK);
+            return DryingRecipes.byInput(level.getRecipeManager(), stack) != null;
         }
 
         @Override
         public List<ItemStack> process(ItemStack stack, Level level) {
-            if (!canProcess(stack, level)) return null;
-            return List.of(
-                    new ItemStack(ModItems.DRIED_TOFU.get()),
-                    new ItemStack(Items.BOWL)
-            );
+            DryingRecipes.Recipe recipe = DryingRecipes.byInput(level.getRecipeManager(), stack);
+            return recipe == null ? null : recipe.process(stack);
         }
 
         @Override

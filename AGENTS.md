@@ -30,3 +30,4 @@
 - 用户说「提交」= 提交并推送到 origin（更新远程仓库），不留本地未推送的提交。
 - 工作进度记进 `docs/1.20.1适配计划.md`。
 - 用户交给的图片只看「是不是与现有素材同一张」（哈希比对即可），不要查看/分析图片内容。
+- 通用配置的说明、默认值和默认允许名单以 `config-templates/northeast_china_delight-common.toml` 的用户确认版本为准；修改时同步 `NortheastChinaConfig.java` 与两版模板，不擅自恢复旧文案。
